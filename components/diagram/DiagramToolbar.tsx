@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Link,
@@ -54,6 +54,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { DiagramJsonEditor } from "./DiagramJsonEditor";
 import { Node, Edge } from "@reactflow/core";
+
 interface DiagramToolbarProps {
   onAddNode: () => void;
   zoom: number;
@@ -179,22 +180,22 @@ export function DiagramToolbar({
 }: DiagramToolbarProps) {
   const [jsonEditorOpen, setJsonEditorOpen] = useState(false);
 
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     setZoom(Math.min(2, zoom * 1.2));
-  };
+  }, [zoom, setZoom]);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     setZoom(Math.max(0.1, zoom * 0.8));
-  };
+  }, [zoom, setZoom]);
 
-  const calculateCriticalPath = () => {
+  const calculateCriticalPath = useCallback(() => {
     // This would typically implement the critical path algorithm
     // For now, we'll just show a placeholder
     alert("Critical Path Analysis feature coming soon!");
-  };
+  }, []);
 
   // Save diagram data to localStorage
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     if (!getDiagramData) {
       console.error("getDiagramData function not provided");
       return;
@@ -221,91 +222,92 @@ export function DiagramToolbar({
       console.error("Error saving diagram:", error);
       alert("Failed to save diagram. Please try again.");
     }
-  };
+  }, [getDiagramData, diagramType]);
 
   // Export diagram as image
-  const handleExport = async (
-    format: "png" | "svg" | "jpeg" | "json" = "png"
-  ) => {
-    if (!diagramRef?.current && format !== "json") {
-      console.error("Diagram reference not available");
-      return;
-    }
-
-    if (!getDiagramData && format === "json") {
-      console.error("getDiagramData function not provided");
-      return;
-    }
-
-    try {
-      let dataUrl;
-      const fileName = `diagramify-${diagramType}-${
-        new Date().toISOString().split("T")[0]
-      }`;
-
-      switch (format) {
-        case "svg":
-          dataUrl = await toSvg(diagramRef!.current!, {
-            filter: (node: Element) =>
-              !node.classList?.contains("react-flow__minimap") &&
-              !node.classList?.contains("react-flow__controls"),
-          });
-          break;
-        case "jpeg":
-          dataUrl = await toJpeg(diagramRef!.current!, {
-            quality: 0.95,
-            filter: (node: Element) =>
-              !node.classList?.contains("react-flow__minimap") &&
-              !node.classList?.contains("react-flow__controls"),
-          });
-          break;
-        case "json":
-          // Export as JSON
-          const diagramData = getDiagramData!();
-          const jsonString = JSON.stringify(
-            {
-              diagramType,
-              timestamp: new Date().toISOString(),
-              data: diagramData,
-            },
-            null,
-            2
-          );
-
-          console.log(jsonString);
-
-          // Create a Blob and generate URL
-          const blob = new Blob([jsonString], { type: "application/json" });
-          dataUrl = URL.createObjectURL(blob);
-          break;
-        case "png":
-        default:
-          dataUrl = await toPng(diagramRef!.current!, {
-            filter: (node: Element) =>
-              !node.classList?.contains("react-flow__minimap") &&
-              !node.classList?.contains("react-flow__controls"),
-          });
-          break;
+  const handleExport = useCallback(
+    async (format: "png" | "svg" | "jpeg" | "json" = "png") => {
+      if (!diagramRef?.current && format !== "json") {
+        console.error("Diagram reference not available");
+        return;
       }
 
-      // Create a download link and trigger it
-      const link = document.createElement("a");
-      link.download = `${fileName}.${format}`;
-      link.href = dataUrl;
-      link.click();
-
-      // Clean up the URL object if we created one
-      if (format === "json") {
-        URL.revokeObjectURL(dataUrl);
+      if (!getDiagramData && format === "json") {
+        console.error("getDiagramData function not provided");
+        return;
       }
-    } catch (error) {
-      console.error("Error exporting diagram:", error);
-      alert("Failed to export diagram. Please try again.");
-    }
-  };
+
+      try {
+        let dataUrl;
+        const fileName = `diagramify-${diagramType}-${
+          new Date().toISOString().split("T")[0]
+        }`;
+
+        switch (format) {
+          case "svg":
+            dataUrl = await toSvg(diagramRef!.current!, {
+              filter: (node: Element) =>
+                !node.classList?.contains("react-flow__minimap") &&
+                !node.classList?.contains("react-flow__controls"),
+            });
+            break;
+          case "jpeg":
+            dataUrl = await toJpeg(diagramRef!.current!, {
+              quality: 0.95,
+              filter: (node: Element) =>
+                !node.classList?.contains("react-flow__minimap") &&
+                !node.classList?.contains("react-flow__controls"),
+            });
+            break;
+          case "json":
+            // Export as JSON
+            const diagramData = getDiagramData!();
+            const jsonString = JSON.stringify(
+              {
+                diagramType,
+                timestamp: new Date().toISOString(),
+                data: diagramData,
+              },
+              null,
+              2
+            );
+
+            console.log(jsonString);
+
+            // Create a Blob and generate URL
+            const blob = new Blob([jsonString], { type: "application/json" });
+            dataUrl = URL.createObjectURL(blob);
+            break;
+          case "png":
+          default:
+            dataUrl = await toPng(diagramRef!.current!, {
+              filter: (node: Element) =>
+                !node.classList?.contains("react-flow__minimap") &&
+                !node.classList?.contains("react-flow__controls"),
+            });
+            break;
+        }
+
+        // Create a download link and trigger it
+        const link = document.createElement("a");
+        link.download = `${fileName}.${format}`;
+        link.href = dataUrl;
+        link.click();
+
+        // Clean up the URL object if we created one
+        if (format === "json") {
+          URL.revokeObjectURL(dataUrl);
+        }
+      } catch (error) {
+        console.error("Error exporting diagram:", error);
+        alert("Failed to export diagram. Please try again.");
+      }
+    },
+    [diagramRef, getDiagramData, diagramType]
+  );
 
   // Import diagram from JSON file
-  const handleImport = () => {
+  const handleImport = useCallback(() => {
     // Create file input element
     const fileInput = document.createElement("input");
     fileInput.type = "file";
@@ -361,17 +363,157 @@ export function DiagramToolbar({
 
     // Trigger the file input click
     fileInput.click();
-  };
+  }, [diagramType]);
 
   // Function to apply changes from JSON editor
-  const handleApplyJsonChanges = (data: { nodes: Node[]; edges: Edge[] }) => {
-    // Apply the changes to the diagram
-    if (diagramRef?.current && getDiagramData) {
-      // If we have React Flow instance through getDiagramData, apply changes
-      // The actual implementation will be done in DiagramCanvas
-      window.updateDiagramFromJson?.(data);
+  const handleApplyJsonChanges = useCallback(
+    (data: { nodes: Node[]; edges: Edge[] }) => {
+      // Apply the changes to the diagram
+      if (diagramRef?.current && getDiagramData) {
+        // If we have React Flow instance through getDiagramData, apply changes
+        // The actual implementation will be done in DiagramCanvas
+        window.updateDiagramFromJson?.(data);
+      }
+    },
+    [diagramRef, getDiagramData]
+  );
+
+  // Add new handler for creating a new diagram
+  const handleNewDiagram = useCallback(() => {
+    if (
+      window.confirm(
+        "Are you sure you want to start a new diagram? Any unsaved changes will be lost."
+      )
+    ) {
+      // Clear the localStorage
+      localStorage.removeItem("diagramify-save");
+      // Reload the page to reset the diagram
+      window.location.reload();
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't trigger shortcuts if user is typing in an input field
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      // Prevent default for all our shortcuts
+      if (
+        (event.key === "s" && (event.ctrlKey || event.metaKey)) || // Save
+        (event.key === "o" && (event.ctrlKey || event.metaKey)) || // Open/Load
+        (event.key === "e" && (event.ctrlKey || event.metaKey)) || // Export
+        (event.key === "n" && event.altKey) || // New (changed from Ctrl to Alt)
+        (event.key === "z" && (event.ctrlKey || event.metaKey)) || // Undo
+        (event.key === "y" && (event.ctrlKey || event.metaKey)) || // Redo
+        event.key === "Delete" ||
+        event.key === "Backspace" ||
+        event.key === "+" ||
+        event.key === "-" ||
+        event.key === "=" || // Often the same key as +
+        event.key === "f" ||
+        event.key === "a" ||
+        event.key === "s" ||
+        event.key === "c" ||
+        event.key === "d" ||
+        event.key === "l" || // Layout shortcut
+        event.key === " " // Space for pan mode
+      ) {
+        event.preventDefault();
+      }
+
+      // Mode shortcuts
+      if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+        if (event.key === "s") setMode("select");
+        if (event.key === "a") setMode("add");
+        if (event.key === "c") setMode("connect");
+        if (event.key === "d") setMode("delete");
+        if (event.key === "l" && autoLayoutDiagram) autoLayoutDiagram();
+        if (event.key === " ") setMode("drag");
+      }
+
+      // Zoom shortcuts
+      if (
+        event.key === "+" ||
+        event.key === "=" ||
+        (event.key === "=" && event.shiftKey)
+      ) {
+        handleZoomIn();
+      }
+      if (event.key === "-") {
+        handleZoomOut();
+      }
+      if (event.key === "f") {
+        calculateCriticalPath();
+      }
+
+      // Delete shortcut
+      if (
+        (event.key === "Delete" || event.key === "Backspace") &&
+        (mode === "select" || mode === "delete")
+      ) {
+        setMode("delete");
+      }
+
+      // Undo/Redo shortcuts
+      if (
+        event.key === "z" &&
+        (event.ctrlKey || event.metaKey) &&
+        !event.shiftKey
+      ) {
+        if (undoable && onUndo) onUndo();
+      }
+      if (
+        (event.key === "y" && (event.ctrlKey || event.metaKey)) ||
+        (event.key === "z" &&
+          (event.ctrlKey || event.metaKey) &&
+          event.shiftKey)
+      ) {
+        if (redoable && onRedo) onRedo();
+      }
+
+      // Save/Load/Export/New shortcuts
+      if (event.key === "s" && (event.ctrlKey || event.metaKey)) {
+        handleSave();
+      }
+      if (event.key === "o" && (event.ctrlKey || event.metaKey)) {
+        handleImport();
+      }
+      if (event.key === "e" && (event.ctrlKey || event.metaKey)) {
+        handleExport();
+      }
+      if (event.key === "n" && event.altKey) {
+        // Changed from Ctrl to Alt
+        handleNewDiagram();
+      }
+    };
+
+    // Add global event listener
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    mode,
+    setMode,
+    handleZoomIn,
+    handleZoomOut,
+    calculateCriticalPath,
+    onUndo,
+    onRedo,
+    undoable,
+    redoable,
+    handleSave,
+    handleImport,
+    handleExport,
+    handleNewDiagram,
+    autoLayoutDiagram,
+  ]);
 
   return (
     <div className="w-full bg-background border-b flex flex-wrap items-center justify-between gap-2 p-2">
@@ -593,6 +735,34 @@ export function DiagramToolbar({
                   variant="ghost"
                   size="sm"
                   className="h-8 w-8"
+                  onClick={handleNewDiagram}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4"
+                  >
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="12" y1="18" x2="12" y2="12" />
+                    <line x1="9" y1="15" x2="15" y2="15" />
+                  </svg>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>New Diagram (Alt+N)</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8"
                   onClick={handleSave}
                 >
                   <SaveIcon size={16} />
@@ -600,6 +770,7 @@ export function DiagramToolbar({
               </TooltipTrigger>
               <TooltipContent>Save Diagram (Ctrl+S)</TooltipContent>
             </Tooltip>
+
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -839,82 +1010,162 @@ export function DiagramToolbar({
               </TabsContent>
 
               <TabsContent value="shortcuts" className="mt-4 px-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Select Mode</span>
-                      <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
-                        S
-                      </kbd>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Add Mode</span>
-                      <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
-                        A
-                      </kbd>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Connect Mode</span>
-                      <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
-                        C
-                      </kbd>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Pan Mode</span>
-                      <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
-                        Space
-                      </kbd>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Delete Mode</span>
-                      <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
-                        D
-                      </kbd>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Mode Shortcuts</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Select Mode</span>
+                        <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                          S
+                        </kbd>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Add Mode</span>
+                        <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                          A
+                        </kbd>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Connect Mode</span>
+                        <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                          C
+                        </kbd>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Delete Mode</span>
+                        <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                          D
+                        </kbd>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Pan Mode</span>
+                        <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                          Space
+                        </kbd>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Zoom In</span>
-                      <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
-                        +
-                      </kbd>
+                  <div>
+                    <h4 className="font-medium mb-2">File Operations</h4>
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>New Diagram</span>
+                        <div className="flex items-center space-x-1">
+                          <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                            Alt
+                          </kbd>
+                          <span>+</span>
+                          <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                            N
+                          </kbd>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Save Diagram</span>
+                        <div className="flex items-center space-x-1">
+                          <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                            Ctrl
+                          </kbd>
+                          <span>+</span>
+                          <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                            S
+                          </kbd>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Load Diagram</span>
+                        <div className="flex items-center space-x-1">
+                          <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                            Ctrl
+                          </kbd>
+                          <span>+</span>
+                          <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                            O
+                          </kbd>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Export Diagram</span>
+                        <div className="flex items-center space-x-1">
+                          <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                            Ctrl
+                          </kbd>
+                          <span>+</span>
+                          <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                            E
+                          </kbd>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Zoom Out</span>
-                      <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
-                        -
-                      </kbd>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Fit View</span>
-                      <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
-                        F
-                      </kbd>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Undo</span>
-                      <div className="flex items-center space-x-1">
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium mb-2">Edit Operations</h4>
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Undo</span>
+                        <div className="flex items-center space-x-1">
+                          <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                            Ctrl
+                          </kbd>
+                          <span>+</span>
+                          <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                            Z
+                          </kbd>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Redo</span>
+                        <div className="flex items-center space-x-1">
+                          <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                            Ctrl
+                          </kbd>
+                          <span>+</span>
+                          <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                            Y
+                          </kbd>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Delete Selected</span>
                         <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
-                          Ctrl
-                        </kbd>
-                        <span>+</span>
-                        <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
-                          Z
+                          Delete
                         </kbd>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Redo</span>
-                      <div className="flex items-center space-x-1">
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium mb-2">View Controls</h4>
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Zoom In</span>
                         <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
-                          Ctrl
-                        </kbd>
-                        <span>+</span>
-                        <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
-                          Y
+                          +
                         </kbd>
                       </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Zoom Out</span>
+                        <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                          -
+                        </kbd>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Fit View</span>
+                        <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                          F
+                        </kbd>
+                      </div>
+                      {diagramType === "AOA" && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Auto Layout</span>
+                          <kbd className="px-1.5 py-0.5 text-xs rounded border bg-muted font-mono">
+                            L
+                          </kbd>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
