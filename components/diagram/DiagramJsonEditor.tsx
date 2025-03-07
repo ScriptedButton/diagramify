@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Node, Edge } from "reactflow";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,6 +80,52 @@ export function DiagramJsonEditor({
     edges: Edge[];
   }>({ nodes: [], edges: [] });
 
+  // Toggle true browser fullscreen mode
+  const toggleFullscreen = useCallback(async () => {
+    if (!fullscreenRef.current) return;
+
+    try {
+      if (!isFullscreen) {
+        setIsFullscreen(true);
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        if (document.fullscreenElement) return;
+        try {
+          if ("requestFullscreen" in fullscreenRef.current) {
+            await fullscreenRef.current.requestFullscreen();
+          } else if ("webkitRequestFullscreen" in fullscreenRef.current) {
+            // @ts-expect-error - vendor prefixed methods
+            await fullscreenRef.current.webkitRequestFullscreen();
+          } else if ("msRequestFullscreen" in fullscreenRef.current) {
+            // @ts-expect-error - vendor prefixed methods
+            await fullscreenRef.current.msRequestFullscreen();
+          }
+        } catch (e) {
+          console.warn("Couldn't enter fullscreen mode:", e);
+        }
+      } else {
+        if (document.fullscreenElement) {
+          try {
+            if ("exitFullscreen" in document) {
+              await document.exitFullscreen();
+            } else if ("webkitExitFullscreen" in document) {
+              // @ts-expect-error - vendor prefixed methods
+              await document.webkitExitFullscreen();
+            } else if ("msExitFullscreen" in document) {
+              // @ts-expect-error - vendor prefixed methods
+              await document.msExitFullscreen();
+            }
+          } catch (e) {
+            console.warn("Couldn't exit fullscreen mode:", e);
+          }
+        }
+        setIsFullscreen(false);
+      }
+    } catch (err) {
+      console.error("Fullscreen operation failed:", err);
+      setIsFullscreen(document.fullscreenElement !== null);
+    }
+  }, [isFullscreen]);
+
   // Initialize the editor with the current diagram data
   useEffect(() => {
     if (isOpen && diagramData) {
@@ -125,7 +171,7 @@ export function DiagramJsonEditor({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, isFullscreen]);
+  }, [isOpen, isFullscreen, toggleFullscreen]);
 
   // Handle text editor changes
   const handleTextChange = (value: string) => {
@@ -238,63 +284,6 @@ export function DiagramJsonEditor({
     } catch (err) {
       setError("Cannot format: Invalid JSON");
       console.error("Format error:", err);
-    }
-  };
-
-  // Toggle true browser fullscreen mode
-  const toggleFullscreen = async () => {
-    if (!fullscreenRef.current) return;
-
-    try {
-      if (!isFullscreen) {
-        // First set the state, then request fullscreen to prevent flashing
-        setIsFullscreen(true);
-
-        // Small delay to ensure state is updated before entering fullscreen
-        await new Promise((resolve) => setTimeout(resolve, 50));
-
-        if (document.fullscreenElement) return; // Already in fullscreen
-
-        // Use try/catch for each method to avoid errors
-        try {
-          if ("requestFullscreen" in fullscreenRef.current) {
-            await fullscreenRef.current.requestFullscreen();
-          } else if ("webkitRequestFullscreen" in fullscreenRef.current) {
-            // @ts-expect-error - vendor prefixed methods
-            await fullscreenRef.current.webkitRequestFullscreen();
-          } else if ("msRequestFullscreen" in fullscreenRef.current) {
-            // @ts-expect-error - vendor prefixed methods
-            await fullscreenRef.current.msRequestFullscreen();
-          }
-        } catch (e) {
-          console.warn("Couldn't enter fullscreen mode:", e);
-          // Don't update state again if fullscreen failed - use the component's fullscreen mode
-        }
-      } else {
-        // First attempt to exit browser fullscreen if we're in it
-        if (document.fullscreenElement) {
-          try {
-            if ("exitFullscreen" in document) {
-              await document.exitFullscreen();
-            } else if ("webkitExitFullscreen" in document) {
-              // @ts-expect-error - vendor prefixed methods
-              await document.webkitExitFullscreen();
-            } else if ("msExitFullscreen" in document) {
-              // @ts-expect-error - vendor prefixed methods
-              await document.msExitFullscreen();
-            }
-          } catch (e) {
-            console.warn("Couldn't exit fullscreen mode:", e);
-          }
-        }
-
-        // Then update our internal state
-        setIsFullscreen(false);
-      }
-    } catch (err) {
-      console.error("Fullscreen operation failed:", err);
-      // Ensure state is consistent if operations fail
-      setIsFullscreen(document.fullscreenElement !== null);
     }
   };
 

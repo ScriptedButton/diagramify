@@ -1,24 +1,15 @@
 "use client";
 
 import * as React from "react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Square, Circle, Triangle, Hexagon } from "lucide-react";
 import { NodeShape } from "./types";
 import { useEffect } from "react";
+import { Square, Circle, Triangle, Hexagon } from "lucide-react";
 
 interface NodeContextMenuProps {
   children: React.ReactNode;
   onShapeChange: (shape: NodeShape) => void;
   currentShape: NodeShape;
   open: boolean;
-  onOpenChange: (open: boolean) => void;
   onContextMenu: (e: React.MouseEvent) => void;
   position?: { x: number; y: number };
 }
@@ -28,7 +19,6 @@ export function NodeContextMenu({
   onShapeChange,
   currentShape,
   open,
-  onOpenChange,
   onContextMenu,
   position = { x: 0, y: 0 },
 }: NodeContextMenuProps) {

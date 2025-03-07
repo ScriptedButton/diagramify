@@ -40,17 +40,11 @@ interface ExtendedNodeProps extends NodeProps<ActivityData> {
 export function ActivityNode({
   data,
   selected,
-  id,
   isConnectable,
   updateNodeData,
 }: ExtendedNodeProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(data.label);
-  const [contextMenuOpen, setContextMenuOpen] = useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState({
-    x: 0,
-    y: 0,
-  });
   const inputRef = useRef<HTMLInputElement>(null);
   const mode = data.mode || "select";
   const isCritical = data.isCritical || false;
@@ -79,26 +73,11 @@ export function ActivityNode({
       ...data,
       shape: newShape,
     });
-    setContextMenuOpen(false);
-  };
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    if (mode === "select") {
-      e.preventDefault();
-      e.stopPropagation(); // Prevent event bubbling
-
-      // Directly use clientX and clientY for positioning
-      const x = e.clientX;
-      const y = e.clientY;
-
-      setContextMenuPosition({ x, y });
-      setContextMenuOpen(true);
-    }
   };
 
   // Base classes for all shapes
   const getBaseClasses = () => {
-    let classes = cn(
+    const classes = cn(
       "shadow-md select-none overflow-hidden",
       selected ? "ring-2 ring-blue-500" : "",
       isCritical ? "border-red-500 dark:border-red-500 border-2" : "",

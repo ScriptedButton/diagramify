@@ -1,3 +1,5 @@
+import { Node, Edge } from "reactflow";
+
 export interface NodeData {
   id: string;
   label: string;
@@ -19,6 +21,17 @@ export interface EdgeData {
   target: string;
   label: string;
   weight?: number;
+  duration?: number;
+  activityId?: string;
+  earlyStart?: number;
+  earlyFinish?: number;
+  lateStart?: number;
+  lateFinish?: number;
+  float?: number;
+  isCritical?: boolean;
+  hasCoDependency?: boolean;
+  dependsOn?: string[];
+  [key: string]: unknown;
 }
 
 export interface Point {
@@ -30,9 +43,11 @@ export type DiagramMode = "select" | "add" | "connect" | "delete" | "drag";
 
 export type NodeShape = "rectangle" | "circle" | "triangle" | "hexagon";
 
-// Extend Window interface to include our custom function
+// Extend Window interface to include our custom functions
 declare global {
   interface Window {
-    updateDiagramNode?: (nodeId: string, newData: any) => void;
+    updateDiagramNode?: (nodeId: string, newData: NodeData) => void;
+    updateDiagramEdge?: (edgeId: string, newData: EdgeData) => void;
+    updateDiagramFromJson?: (data: { nodes: Node[]; edges: Edge[] }) => void;
   }
 }

@@ -2,52 +2,26 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
-  ChevronDown,
-  Plus,
-  ZoomIn,
-  ZoomOut,
-  Undo,
-  Redo,
-  Share2,
-  Save,
-  Download,
-  Calculator,
-  MousePointer,
   Link,
-  PlusCircle,
-  Trash,
   HelpCircleIcon,
-  SettingsIcon,
   TrashIcon,
   ZoomInIcon,
   ZoomOutIcon,
   SaveIcon,
   FolderIcon,
   DownloadIcon,
-  MousePointerClick,
   CircleIcon,
   SquareIcon,
   MoveIcon,
-  Link2Off,
   ZapIcon,
-  PlusIcon,
-  MessageSquareIcon,
   LayoutIcon,
   FileJsonIcon,
   PlayIcon,
   StopCircleIcon,
   PanelLeftIcon,
+  MousePointerClick,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { DiagramMode } from "./types";
 import { toPng, toSvg, toJpeg } from "html-to-image";
 import {
@@ -77,10 +51,9 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HistoryState } from "./DiagramCanvas";
 import { cn } from "@/lib/utils";
 import { DiagramJsonEditor } from "./DiagramJsonEditor";
-
+import { Node, Edge } from "@reactflow/core";
 interface DiagramToolbarProps {
   onAddNode: () => void;
   zoom: number;
@@ -91,7 +64,7 @@ interface DiagramToolbarProps {
   onRedo?: () => void;
   undoable?: boolean;
   redoable?: boolean;
-  getDiagramData?: () => { nodes: any[]; edges: any[] };
+  getDiagramData?: () => { nodes: Node[]; edges: Edge[] };
   diagramRef?: React.RefObject<HTMLDivElement | null>;
   diagramType?: "AOA" | "AON";
   createDummyActivity?: () => void;
@@ -169,11 +142,11 @@ const CoDependencyHelp = ({ diagramType }: { diagramType: "AOA" | "AON" }) => {
                     indigo lines
                   </li>
                   <li>
-                    You can create "dummy activities" with 0 duration for
-                    logical dependencies
+                    You can create &quot;dummy activities&quot; with 0 duration
+                    for logical dependencies
                   </li>
                   <li>
-                    Click on an edge's info button to see its dependencies
+                    Click on an edge&apos;s info button to see its dependencies
                   </li>
                 </ul>
               </div>
@@ -186,7 +159,6 @@ const CoDependencyHelp = ({ diagramType }: { diagramType: "AOA" | "AON" }) => {
 };
 
 export function DiagramToolbar({
-  onAddNode,
   zoom,
   setZoom,
   mode,
@@ -198,7 +170,6 @@ export function DiagramToolbar({
   getDiagramData,
   diagramRef,
   diagramType = "AON",
-  createDummyActivity,
   showDummyMaker,
   setShowDummyMaker,
   selectedDependencies,
@@ -220,22 +191,6 @@ export function DiagramToolbar({
     // This would typically implement the critical path algorithm
     // For now, we'll just show a placeholder
     alert("Critical Path Analysis feature coming soon!");
-  };
-
-  // Get the icon for the current mode
-  const getModeIcon = () => {
-    switch (mode) {
-      case "select":
-        return <MousePointer className="h-4 w-4" />;
-      case "connect":
-        return <Link className="h-4 w-4" />;
-      case "add":
-        return <PlusCircle className="h-4 w-4" />;
-      case "delete":
-        return <Trash className="h-4 w-4" />;
-      default:
-        return <MousePointer className="h-4 w-4" />;
-    }
   };
 
   // Save diagram data to localStorage
@@ -428,7 +383,7 @@ export function DiagramToolbar({
   };
 
   // Function to apply changes from JSON editor
-  const handleApplyJsonChanges = (data: { nodes: any[]; edges: any[] }) => {
+  const handleApplyJsonChanges = (data: { nodes: Node[]; edges: Edge[] }) => {
     // Apply the changes to the diagram
     if (diagramRef?.current && getDiagramData) {
       // If we have React Flow instance through getDiagramData, apply changes

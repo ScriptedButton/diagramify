@@ -182,7 +182,10 @@ export function CustomEdge({
               <button
                 type="button"
                 className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-                onClick={onEdgeClick}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdgeClick();
+                }}
               >
                 <PencilIcon size={14} />
               </button>

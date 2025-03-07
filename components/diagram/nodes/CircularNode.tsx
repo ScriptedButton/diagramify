@@ -5,7 +5,6 @@ import { Handle, Position, NodeProps } from "reactflow";
 import { motion } from "motion/react";
 import { DiagramMode, NodeShape } from "../types";
 import { cn } from "@/lib/utils";
-import { NodeContextMenu } from "../NodeContextMenu";
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -37,21 +36,14 @@ interface ExtendedNodeProps extends NodeProps<CircularNodeData> {
 export function CircularNode({
   data,
   selected,
-  id,
   isConnectable,
   updateNodeData,
 }: ExtendedNodeProps) {
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
-  const [contextMenuOpen, setContextMenuOpen] = useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState({
-    x: 0,
-    y: 0,
-  });
   const inputRef = useRef<HTMLInputElement>(null);
   const mode = data.mode || "select";
   const isCritical = data.isCritical || false;
-  const shape = data.shape || "circle";
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Only allow numbers
@@ -94,28 +86,6 @@ export function CircularNode({
 
     setIsEditing(null);
   };
-
-  const handleShapeChange = (newShape: NodeShape) => {
-    updateNodeData?.({
-      ...data,
-      shape: newShape,
-    });
-    setContextMenuOpen(false);
-  };
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    if (mode === "select") {
-      e.preventDefault();
-      setContextMenuPosition({ x: e.clientX, y: e.clientY });
-      setContextMenuOpen(true);
-    }
-  };
-
-  // Calculate slack if earliest and latest are defined
-  const slack =
-    data.earliest !== undefined && data.latest !== undefined
-      ? data.latest - data.earliest
-      : undefined;
 
   // Render different node shapes
   const renderShapedNode = () => {

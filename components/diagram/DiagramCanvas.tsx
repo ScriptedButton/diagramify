@@ -17,11 +17,12 @@ import ReactFlow, {
   BackgroundVariant,
   SelectionMode,
   NodeProps,
+  ConnectionLineComponentProps,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { cn } from "@/lib/utils";
 import { DiagramToolbar } from "./DiagramToolbar";
-import { DiagramMode } from "./types";
+import { DiagramMode, NodeData, EdgeData } from "./types";
 import { ActivityNode } from "./nodes/ActivityNode";
 import { CircularNode } from "./nodes/CircularNode";
 import { CustomEdge } from "./CustomEdge";
@@ -37,7 +38,7 @@ const nodeTypes: NodeTypes = {
       {...props}
       updateNodeData={(newData) => {
         const { id } = props;
-        window.updateDiagramNode?.(id, newData);
+        window.updateDiagramNode?.(id, newData as unknown as NodeData);
       }}
     />
   ),
@@ -46,7 +47,7 @@ const nodeTypes: NodeTypes = {
       {...props}
       updateNodeData={(newData) => {
         const { id } = props;
-        window.updateDiagramNode?.(id, newData);
+        window.updateDiagramNode?.(id, newData as unknown as NodeData);
       }}
     />
   ),
@@ -55,302 +56,6 @@ const nodeTypes: NodeTypes = {
 // Define custom edge types
 const edgeTypes: EdgeTypes = {
   custom: CustomEdge,
-};
-
-// Define interfaces for node and edge data
-interface NodeData {
-  label: string;
-  duration?: number;
-  earliest?: number;
-  latest?: number;
-  [key: string]: unknown; // Use unknown instead of any
-}
-
-interface EdgeData {
-  label?: string;
-  activityId?: string;
-  duration?: number;
-  dependency?: string;
-  [key: string]: unknown; // Use unknown instead of any
-}
-
-declare global {
-  interface Window {
-    updateDiagramNode?: (nodeId: string, newData: NodeData) => void;
-    updateDiagramEdge?: (edgeId: string, newData: EdgeData) => void;
-    updateDiagramFromJson?: (data: { nodes: Node[]; edges: Edge[] }) => void;
-  }
-}
-
-// Add type for node timing data
-interface NodeTimingData {
-  earliest: number;
-  latest: number;
-}
-
-// Add helper functions for calculating times
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const calculateEarlyTimes = (
-  nodes: Node[],
-  edges: Edge[]
-): Map<string, NodeTimingData> => {
-  const timings = new Map<string, NodeTimingData>();
-
-  // Initialize all nodes with earliest time 0
-  nodes.forEach((node) => {
-    timings.set(node.id, { earliest: 0, latest: Infinity });
-  });
-
-  // Find roots (nodes with no incoming edges)
-  const hasIncomingEdge = new Set<string>();
-  edges.forEach((edge) => {
-    hasIncomingEdge.add(edge.target);
-  });
-
-  const rootNodes = nodes.filter((node) => !hasIncomingEdge.has(node.id));
-
-  // If no root nodes, just use the first node
-  if (rootNodes.length === 0 && nodes.length > 0) {
-    rootNodes.push(nodes[0]);
-  }
-
-  // To prevent infinite loops, limit iterations
-  let iterations = 0;
-  const maxIterations = nodes.length * 2;
-
-  // Forward pass - calculate earliest times
-  let changed = true;
-  while (changed && iterations < maxIterations) {
-    changed = false;
-    iterations++;
-
-    edges.forEach((edge) => {
-      if (!edge.source || !edge.target || !edge.data) return;
-
-      const sourceTime = timings.get(edge.source)?.earliest || 0;
-      const duration = edge.data.duration || 0;
-      const targetTime = timings.get(edge.target)?.earliest || 0;
-
-      if (sourceTime + duration > targetTime) {
-        timings.set(edge.target, {
-          earliest: sourceTime + duration,
-          latest: timings.get(edge.target)?.latest || Infinity,
-        });
-        changed = true;
-      }
-    });
-  }
-
-  return timings;
-};
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const calculateLateTimes = (
-  nodes: Node[],
-  edges: Edge[],
-  earlyTimes: Map<string, NodeTimingData>
-): Map<string, NodeTimingData> => {
-  const timings = new Map<string, NodeTimingData>();
-
-  // Find the project duration based on the maximum earliest time
-  const projectDuration = Math.max(
-    ...Array.from(earlyTimes.values()).map((t) => t.earliest || 0),
-    0 // Default to 0 if array is empty
-  );
-
-  // Initialize all nodes with latest time = project duration
-  nodes.forEach((node) => {
-    timings.set(node.id, {
-      earliest: earlyTimes.get(node.id)?.earliest || 0,
-      latest: projectDuration,
-    });
-  });
-
-  // Find terminal nodes (nodes with no outgoing edges)
-  const hasOutgoingEdge = new Set<string>();
-  edges.forEach((edge) => {
-    hasOutgoingEdge.add(edge.source);
-  });
-
-  const terminalNodes = nodes.filter((node) => !hasOutgoingEdge.has(node.id));
-
-  // If no terminal nodes, just use all nodes with the maximum earliest time
-  if (terminalNodes.length === 0) {
-    const maxEarliest = Math.max(
-      ...nodes.map((node) => earlyTimes.get(node.id)?.earliest || 0)
-    );
-    nodes.forEach((node) => {
-      if ((earlyTimes.get(node.id)?.earliest || 0) === maxEarliest) {
-        terminalNodes.push(node);
-      }
-    });
-  }
-
-  // To prevent infinite loops, limit iterations
-  let iterations = 0;
-  const maxIterations = nodes.length * 2;
-
-  // Backward pass - calculate latest times
-  let changed = true;
-  while (changed && iterations < maxIterations) {
-    changed = false;
-    iterations++;
-
-    edges.forEach((edge) => {
-      if (!edge.source || !edge.target || !edge.data) return;
-
-      const targetTime = timings.get(edge.target)?.latest || projectDuration;
-      const duration = edge.data.duration || 0;
-      const sourceTime = timings.get(edge.source)?.latest || projectDuration;
-
-      if (targetTime - duration < sourceTime) {
-        timings.set(edge.source, {
-          earliest: earlyTimes.get(edge.source)?.earliest || 0,
-          latest: targetTime - duration,
-        });
-        changed = true;
-      }
-    });
-  }
-
-  return timings;
-};
-
-// New function to identify co-dependencies
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const identifyDependencies = (
-  nodes: Node[],
-  edges: Edge[]
-): Map<string, string[]> => {
-  // Map activity IDs to their dependent activities
-  const dependencies = new Map<string, string[]>();
-
-  // Group edges by target node to find co-dependencies
-  const targetNodeToEdges = new Map<string, Edge[]>();
-
-  edges.forEach((edge) => {
-    if (!edge.target || !edge.data?.activityId) return;
-
-    if (!targetNodeToEdges.has(edge.target)) {
-      targetNodeToEdges.set(edge.target, []);
-    }
-    targetNodeToEdges.get(edge.target)?.push(edge);
-  });
-
-  // For each target node with multiple incoming edges, mark as co-dependency
-  targetNodeToEdges.forEach((incomingEdges) => {
-    if (incomingEdges.length > 1) {
-      // This node has co-dependencies
-      incomingEdges.forEach((edge) => {
-        if (!edge.data?.activityId) return;
-
-        // Add all other activities as dependencies of this activity
-        const activityId = edge.data.activityId;
-        const dependentActivities = incomingEdges
-          .filter((e) => e.id !== edge.id && e.data?.activityId)
-          .map((e) => e.data.activityId as string);
-
-        if (dependentActivities.length > 0) {
-          dependencies.set(activityId, dependentActivities);
-        }
-      });
-    }
-  });
-
-  return dependencies;
-};
-
-// Add utility functions for critical path identification
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const identifyCriticalPath = (
-  nodes: Node[],
-  edges: Edge[],
-  timings: Map<string, NodeTimingData>
-): { criticalNodes: Set<string>; criticalEdges: Set<string> } => {
-  const criticalNodes = new Set<string>();
-  const criticalEdges = new Set<string>();
-
-  // Find nodes with zero slack (critical)
-  nodes.forEach((node) => {
-    const data = timings.get(node.id);
-    if (data && data.earliest === data.latest) {
-      criticalNodes.add(node.id);
-    }
-  });
-
-  // Find edges on the critical path
-  edges.forEach((edge) => {
-    if (!edge.source || !edge.target) return;
-
-    const sourceNode = timings.get(edge.source);
-    const targetNode = timings.get(edge.target);
-
-    if (!sourceNode || !targetNode) return;
-
-    const duration = edge.data?.duration || 0;
-    const earlyStart = sourceNode.earliest;
-    const lateStart = targetNode.latest - duration;
-
-    // Calculate float (slack)
-    const float = lateStart - earlyStart;
-
-    // If the float is zero and both nodes are critical, the edge is on the critical path
-    if (
-      float === 0 &&
-      criticalNodes.has(edge.source) &&
-      criticalNodes.has(edge.target)
-    ) {
-      criticalEdges.add(edge.id);
-    }
-  });
-
-  return { criticalNodes, criticalEdges };
-};
-
-// Add function to update edge timings
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const updateEdgeTimings = (
-  edge: Edge,
-  nodeTimings: Map<string, NodeTimingData>,
-  criticalEdges: Set<string>
-): Edge => {
-  if (!edge.source || !edge.target || !edge.data) return edge;
-
-  const sourceNode = nodeTimings.get(edge.source);
-  const targetNode = nodeTimings.get(edge.target);
-
-  if (!sourceNode || !targetNode) return edge;
-
-  const duration = edge.data.duration || 0;
-  const earlyStart = sourceNode.earliest;
-  const earlyFinish = earlyStart + duration;
-  const lateFinish = targetNode.latest;
-  const lateStart = lateFinish - duration;
-
-  // Calculate float (slack)
-  const float = lateStart - earlyStart;
-  const isCritical = criticalEdges.has(edge.id);
-
-  return {
-    ...edge,
-    data: {
-      ...edge.data,
-      earlyStart,
-      earlyFinish,
-      lateStart,
-      lateFinish,
-      float,
-      isCritical,
-    },
-    // Format the label
-    label: `${edge.data.activityId}(${duration}, ${earlyStart})`,
-    // Style critical paths
-    style: {
-      ...edge.style,
-      stroke: isCritical ? "#ef4444" : "#94a3b8",
-      strokeWidth: isCritical ? 3 : 2,
-    },
-  };
 };
 
 // Add a function to find and update linked co-dependencies
@@ -401,7 +106,9 @@ export function DiagramCanvas({
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [mode, setMode] = useState<DiagramMode>("select");
-  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const reactFlowWrapper = useRef<HTMLDivElement>(
+    null
+  ) as React.MutableRefObject<HTMLDivElement>;
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance | null>(null);
   const [currentZoom, setCurrentZoom] = useState(1);
@@ -558,7 +265,7 @@ export function DiagramCanvas({
           };
 
     setNodes((nds) => [...nds, newNode]);
-  }, [reactFlowInstance, nodes.length, mode, diagramType]);
+  }, [reactFlowInstance, diagramType, nodes.length, mode, setNodes]);
 
   // Function to add a start node
   const addStartNode = useCallback(() => {
@@ -625,7 +332,7 @@ export function DiagramCanvas({
           };
 
     setNodes((nds) => [...nds, newNode]);
-  }, [reactFlowInstance, nodes, mode, diagramType]);
+  }, [reactFlowInstance, nodes, diagramType, mode, setNodes]);
 
   // Function to add an end node
   const addEndNode = useCallback(() => {
@@ -694,7 +401,7 @@ export function DiagramCanvas({
           };
 
     setNodes((nds) => [...nds, newNode]);
-  }, [reactFlowInstance, nodes, mode, diagramType]);
+  }, [reactFlowInstance, nodes, diagramType, mode, setNodes]);
 
   // Handle connection creation
   const onConnect = useCallback(
@@ -751,7 +458,6 @@ export function DiagramCanvas({
           edgeStyle = {
             stroke: "#6366f1", // Indigo color
             strokeWidth: 2,
-            strokeDasharray: "5,5", // Dashed line for co-dependencies
           };
         }
 
@@ -881,8 +587,6 @@ export function DiagramCanvas({
     edges.forEach((edge) => {
       if (edge.target) hasIncomingEdge.add(edge.target);
     });
-
-    const rootNodes = nodes.filter((node) => !hasIncomingEdge.has(node.id));
 
     // Calculate earliest times (simple forward pass)
     let changed = true;
@@ -1384,9 +1088,6 @@ export function DiagramCanvas({
       };
 
       // Generate a unique activity ID for the dummy activity
-      const usedActivityIds = new Set(
-        edges.map((edge) => edge.data?.activityId).filter(Boolean)
-      );
 
       // Find the dependency edges
       const dependencyEdges = edges.filter((edge) =>
@@ -1452,35 +1153,31 @@ export function DiagramCanvas({
   }, []);
 
   // Function to handle selection changes
-  const onSelectionChange = useCallback(
-    ({
-      nodes: selectedNodes,
-      edges: selectedEdges,
-    }: {
-      nodes: Node[];
-      edges: Edge[];
-    }) => {
-      // Handle selection changes
+  const onSelectionChange = useCallback(() => {
+    // Handle selection changes
+  }, []);
+
+  // ConnectionLine component for custom connection lines
+  const ConnectionLineComponent = useCallback(
+    ({ fromX, fromY, toX, toY }: ConnectionLineComponentProps) => {
+      // Constructing a path for the connection line
+      const path = `M${fromX},${fromY} L${toX},${toY}`;
+
+      return (
+        <g>
+          <path
+            d={path}
+            style={{
+              stroke: "#6366f1", // Indigo color
+              strokeWidth: 2,
+              strokeDasharray: "5,5",
+            }}
+          />
+        </g>
+      );
     },
     []
   );
-
-  // ConnectionLine component for custom connection lines
-  const ConnectionLineComponent = useCallback((props: any) => {
-    // Using any here to avoid complexity with the exact prop type
-    return (
-      <g>
-        <path
-          d={props.path}
-          style={{
-            stroke: "#6366f1", // Indigo color
-            strokeWidth: 2,
-            strokeDasharray: "5,5",
-          }}
-        />
-      </g>
-    );
-  }, []);
 
   // Functions for node dragging
   const onNodeDragStart = useCallback(() => {
@@ -1517,6 +1214,12 @@ export function DiagramCanvas({
     edges,
     mode,
     dummyTargetActivity,
+    createDummyActivity,
+    setNodes,
+    setEdges,
+    reactFlowWrapper,
+    setSelectedDependencies,
+    setShowDummyMaker,
   ]);
 
   return (
