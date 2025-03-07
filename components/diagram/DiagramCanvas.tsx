@@ -795,8 +795,15 @@ export function DiagramCanvas({
         case "json":
           // Export as JSON
           const flowData = reactFlowInstance.toObject();
-          const jsonData = JSON.stringify(flowData, null, 2);
-
+          const jsonData = JSON.stringify(
+            {
+              diagramType,
+              timestamp: new Date().toISOString(),
+              data: flowData,
+            },
+            null,
+            2
+          );
           // Create a downloadable blob
           const jsonBlob = new Blob([jsonData], { type: "application/json" });
           const jsonUrl = URL.createObjectURL(jsonBlob);
@@ -862,7 +869,7 @@ export function DiagramCanvas({
       console.error("Error exporting diagram:", error);
       alert("Failed to export diagram. Please try again.");
     }
-  }, [reactFlowWrapper, reactFlowInstance]);
+  }, [reactFlowWrapper, reactFlowInstance, diagramType]);
 
   // Handle undo - simple implementation
   const handleUndo = useCallback(() => {

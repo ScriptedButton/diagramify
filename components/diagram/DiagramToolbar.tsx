@@ -202,14 +202,18 @@ export function DiagramToolbar({
 
     try {
       const data = getDiagramData();
-      localStorage.setItem(
-        "diagramify-save",
-        JSON.stringify({
+      const jsonString = JSON.stringify(
+        {
           diagramType,
           timestamp: new Date().toISOString(),
-          data,
-        })
+          data: data,
+        },
+        null,
+        2
       );
+
+      // Save to localStorage
+      localStorage.setItem("diagramify-save", jsonString);
 
       // Show success message
       alert("Diagram saved successfully!");
@@ -268,6 +272,8 @@ export function DiagramToolbar({
             2
           );
 
+          console.log(jsonString);
+
           // Create a Blob and generate URL
           const blob = new Blob([jsonString], { type: "application/json" });
           dataUrl = URL.createObjectURL(blob);
@@ -317,31 +323,29 @@ export function DiagramToolbar({
             const content = event.target?.result as string;
             const parsedData = JSON.parse(content);
 
+            // Handle both wrapped and unwrapped formats
+            const diagramData = parsedData.data || parsedData;
+
             // Verify the imported data has the correct structure
             if (
-              parsedData &&
-              parsedData.data &&
-              parsedData.data.nodes &&
-              parsedData.data.edges
+              diagramData &&
+              Array.isArray(diagramData.nodes) &&
+              Array.isArray(diagramData.edges)
             ) {
-              // Check if diagram type matches
-              if (parsedData.diagramType !== diagramType) {
-                if (
-                  confirm(
-                    `This is a ${parsedData.diagramType} diagram, but you're currently in ${diagramType} mode. Import anyway?`
-                  )
-                ) {
-                  // User confirmed, proceed with import
-                  localStorage.setItem("diagramify-save", content);
-                  window.location.reload(); // Reload to apply the new diagram
-                }
-              } else {
-                // Same diagram type, proceed with import
-                localStorage.setItem("diagramify-save", content);
-                window.location.reload(); // Reload to apply the new diagram
-              }
+              // Save the data and reload
+              localStorage.setItem(
+                "diagramify-save",
+                JSON.stringify({
+                  diagramType: parsedData.diagramType || diagramType,
+                  timestamp: new Date().toISOString(),
+                  data: diagramData,
+                })
+              );
+              window.location.reload();
             } else {
-              alert("Invalid diagram file format.");
+              alert(
+                "Invalid diagram file format. The JSON must contain 'nodes' and 'edges' arrays."
+              );
             }
           } catch (error) {
             console.error("Error parsing JSON:", error);
@@ -357,29 +361,6 @@ export function DiagramToolbar({
 
     // Trigger the file input click
     fileInput.click();
-  };
-
-  // Function to handle export specifically as JSON
-  const handleExportJson = () => {
-    if (getDiagramData) {
-      const flowData = getDiagramData();
-      const jsonData = JSON.stringify(flowData, null, 2);
-
-      // Create a downloadable blob
-      const jsonBlob = new Blob([jsonData], { type: "application/json" });
-      const jsonUrl = URL.createObjectURL(jsonBlob);
-
-      // Create a link and trigger download
-      const a = document.createElement("a");
-      a.href = jsonUrl;
-      a.download = `diagram-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-
-      // Clean up
-      document.body.removeChild(a);
-      URL.revokeObjectURL(jsonUrl);
-    }
   };
 
   // Function to apply changes from JSON editor
@@ -655,7 +636,7 @@ export function DiagramToolbar({
                   variant="ghost"
                   size="sm"
                   className="h-8 w-8"
-                  onClick={handleExportJson}
+                  onClick={() => handleExport("json")}
                 >
                   <FileJsonIcon size={16} />
                 </Button>

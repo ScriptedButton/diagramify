@@ -129,7 +129,18 @@ export function DiagramJsonEditor({
   // Initialize the editor with the current diagram data
   useEffect(() => {
     if (isOpen && diagramData) {
-      const formattedJson = JSON.stringify(diagramData, null, 2);
+      const formattedJson = JSON.stringify(
+        {
+          diagramType: "AOA",
+          timestamp: new Date().toISOString(),
+          data: {
+            nodes: diagramData.nodes,
+            edges: diagramData.edges,
+          },
+        },
+        null,
+        2
+      );
       setJsonText(formattedJson);
       setEditedData(diagramData);
       setError(null);
@@ -178,11 +189,56 @@ export function DiagramJsonEditor({
     setJsonText(value);
     try {
       const parsed = JSON.parse(value);
-      if (!parsed.nodes || !parsed.edges) {
-        setError("JSON must include nodes and edges arrays");
+
+      // Handle both wrapped and unwrapped formats
+      const diagramData = parsed.data || parsed;
+
+      // Validate the structure more thoroughly
+      if (!diagramData || typeof diagramData !== "object") {
+        setError("Invalid JSON: must be an object containing diagram data");
         return;
       }
-      setEditedData(parsed);
+
+      if (
+        !Array.isArray(diagramData.nodes) ||
+        !Array.isArray(diagramData.edges)
+      ) {
+        setError("JSON must include 'nodes' and 'edges' as arrays");
+        return;
+      }
+
+      // Validate nodes structure
+      const validNodes = diagramData.nodes.every(
+        (node: Node) =>
+          node.id &&
+          typeof node.position === "object" &&
+          typeof node.position.x === "number" &&
+          typeof node.position.y === "number"
+      );
+
+      if (!validNodes) {
+        setError(
+          "Invalid node format: each node must have an id and position (x, y)"
+        );
+        return;
+      }
+
+      // Validate edges structure
+      const validEdges = diagramData.edges.every(
+        (edge: Edge) =>
+          edge.id &&
+          typeof edge.source === "string" &&
+          typeof edge.target === "string"
+      );
+
+      if (!validEdges) {
+        setError(
+          "Invalid edge format: each edge must have an id, source, and target"
+        );
+        return;
+      }
+
+      setEditedData(diagramData);
       setError(null);
     } catch (err) {
       setError("Invalid JSON format");
@@ -251,7 +307,12 @@ export function DiagramJsonEditor({
   // Save changes and close
   const handleSave = () => {
     if (!error) {
-      onSave(editedData);
+      // Extract just the diagram data for the parent component
+      const dataToSave = {
+        nodes: editedData.nodes,
+        edges: editedData.edges,
+      };
+      onSave(dataToSave);
       onClose();
     }
   };
@@ -263,7 +324,13 @@ export function DiagramJsonEditor({
       if (activeTab === "text") {
         // If in text mode, validate the JSON first
         const parsed = JSON.parse(jsonText);
-        if (!Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
+        const diagramData = parsed.data || parsed;
+
+        if (
+          !diagramData ||
+          !Array.isArray(diagramData.nodes) ||
+          !Array.isArray(diagramData.edges)
+        ) {
           setError("Invalid diagram data: missing nodes or edges arrays");
           return;
         }
@@ -279,8 +346,23 @@ export function DiagramJsonEditor({
   const formatJson = () => {
     try {
       const parsed = JSON.parse(jsonText);
-      setJsonText(JSON.stringify(parsed, null, 2));
-      setError(null);
+      // Handle both wrapped and unwrapped formats
+      const diagramData = parsed.data || parsed;
+
+      if (diagramData.nodes && diagramData.edges) {
+        const formatted = {
+          diagramType: parsed.diagramType || "AOA",
+          timestamp: new Date().toISOString(),
+          data: {
+            nodes: diagramData.nodes,
+            edges: diagramData.edges,
+          },
+        };
+        setJsonText(JSON.stringify(formatted, null, 2));
+        setError(null);
+      } else {
+        setError("Cannot format: Invalid diagram structure");
+      }
     } catch (err) {
       setError("Cannot format: Invalid JSON");
       console.error("Format error:", err);
