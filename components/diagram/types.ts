@@ -26,7 +26,7 @@ export interface Point {
   y: number;
 }
 
-export type DiagramMode = "select" | "connect" | "add" | "delete";
+export type DiagramMode = "select" | "add" | "connect" | "delete" | "drag";
 
 export type NodeShape = "rectangle" | "circle" | "triangle" | "hexagon";
 

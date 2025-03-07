@@ -24,6 +24,13 @@ type ActivityData = {
   isCritical?: boolean;
   mode: DiagramMode;
   shape?: NodeShape;
+  isStartNode?: boolean;
+  isEndNode?: boolean;
+  style?: {
+    backgroundColor?: string;
+    color?: string;
+    borderColor?: string;
+  };
 };
 
 interface ExtendedNodeProps extends NodeProps<ActivityData> {
@@ -89,6 +96,24 @@ export function ActivityNode({
     }
   };
 
+  // Base classes for all shapes
+  const getBaseClasses = () => {
+    let classes = cn(
+      "shadow-md select-none overflow-hidden",
+      selected ? "ring-2 ring-blue-500" : "",
+      isCritical ? "border-red-500 dark:border-red-500 border-2" : "",
+      mode === "delete" &&
+        "opacity-70 hover:opacity-100 hover:border-destructive"
+    );
+
+    // Apply custom styling for start and end nodes
+    if (data.isStartNode || data.isEndNode) {
+      return classes; // We'll use inline styles for these special nodes
+    }
+
+    return classes;
+  };
+
   // Render the node based on its shape
   const renderShapedNode = () => {
     const content = (
@@ -108,6 +133,9 @@ export function ActivityNode({
             <div
               className="font-medium"
               onDoubleClick={() => mode === "select" && setIsEditing(true)}
+              style={
+                data.style?.color ? { color: data.style.color } : undefined
+              }
             >
               {data.label}
             </div>
@@ -163,23 +191,24 @@ export function ActivityNode({
       </CardContent>
     );
 
-    // Base classes for all shapes
-    const baseClasses = cn(
-      "shadow-md select-none overflow-hidden",
-      selected ? "ring-2 ring-blue-500" : "",
-      isCritical ? "border-red-500 dark:border-red-500 border-2" : "",
-      mode === "delete" &&
-        "opacity-70 hover:opacity-100 hover:border-destructive"
-    );
+    // Get custom styles
+    const customStyle = data.style
+      ? {
+          backgroundColor: data.style.backgroundColor,
+          borderColor: data.style.borderColor,
+          color: data.style.color,
+        }
+      : {};
 
     switch (shape) {
       case "circle":
         return (
           <div
             className={cn(
-              baseClasses,
+              getBaseClasses(),
               "rounded-full w-40 h-40 flex items-center justify-center border border-input bg-background"
             )}
+            style={customStyle}
           >
             <div className="p-2 text-center">
               <div className="font-medium">{data.label}</div>
@@ -203,10 +232,11 @@ export function ActivityNode({
           <div className="relative w-40 h-40">
             <div
               className={cn(
-                baseClasses,
+                getBaseClasses(),
                 "absolute inset-0 bg-background border border-input",
-                "clip-path-triangle" // You'll need to add this clip-path in your CSS
+                "clip-path-triangle"
               )}
+              style={customStyle}
             >
               <div className="absolute inset-0 flex items-center justify-center p-2 text-center">
                 <div>
@@ -233,10 +263,11 @@ export function ActivityNode({
           <div className="relative w-48 h-40">
             <div
               className={cn(
-                baseClasses,
+                getBaseClasses(),
                 "absolute inset-0 bg-background border border-input",
-                "clip-path-hexagon" // You'll need to add this clip-path in your CSS
+                "clip-path-hexagon"
               )}
+              style={customStyle}
             >
               <div className="absolute inset-0 flex items-center justify-center p-3 text-center">
                 <div>
@@ -258,9 +289,15 @@ export function ActivityNode({
           </div>
         );
 
-      case "rectangle":
       default:
-        return <Card className={baseClasses}>{content}</Card>;
+        return (
+          <Card
+            className={cn(getBaseClasses(), "w-60 border border-input")}
+            style={customStyle}
+          >
+            {content}
+          </Card>
+        );
     }
   };
 

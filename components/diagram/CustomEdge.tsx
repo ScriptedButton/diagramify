@@ -3,13 +3,12 @@
 import { useCallback, useState } from "react";
 import {
   EdgeProps,
-  getSmoothStepPath,
   EdgeLabelRenderer,
   BaseEdge,
   getBezierPath,
 } from "reactflow";
 import { cn } from "@/lib/utils";
-import { PencilIcon, InfoIcon } from "lucide-react";
+import { PencilIcon, InfoIcon, LinkIcon } from "lucide-react";
 
 export function CustomEdge({
   id,
@@ -42,9 +41,6 @@ export function CustomEdge({
     targetPosition,
     curvature: uniqueCurvature,
   });
-
-  // Calculate curve center for animating dashed lines
-  const pathCenter = edgePath.split(" ").find((p) => p.includes("C"));
 
   const onEdgeClick = useCallback(() => {
     const newDuration = window.prompt(
@@ -80,18 +76,41 @@ export function CustomEdge({
       lateFinish,
       isCritical,
       float,
+      hasCoDependency,
+      dependsOn,
     } = data;
     if (activityId && duration !== undefined) {
       return (
         <div className="flex flex-col items-center min-w-[80px]">
           <div className="font-semibold flex items-center gap-1.5">
             <span>{activityId}</span>
+            {hasCoDependency && !showDetails && (
+              <LinkIcon
+                size={14}
+                className="text-indigo-500 animate-pulse"
+                aria-label="Has co-dependencies"
+              />
+            )}
             {showDetails && (
-              <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
-                {isCritical ? "Critical" : `Float: ${float || 0}`}
+              <span
+                className={cn(
+                  "text-xs px-1.5 py-0.5 rounded",
+                  isCritical
+                    ? "bg-red-100 dark:bg-red-800/30"
+                    : hasCoDependency
+                    ? "bg-indigo-100 dark:bg-indigo-800/30"
+                    : "bg-gray-100 dark:bg-gray-800"
+                )}
+              >
+                {isCritical
+                  ? "Critical"
+                  : hasCoDependency
+                  ? "Co-Dependency"
+                  : `Float: ${float || 0}`}
               </span>
             )}
           </div>
+
           <div className="flex gap-1.5 text-xs mt-0.5">
             <span className="font-medium">d={duration}</span>
             {showDetails ? (
@@ -103,6 +122,16 @@ export function CustomEdge({
               <span>ES={earlyStart}</span>
             )}
           </div>
+
+          {showDetails && dependsOn && dependsOn.length > 0 && (
+            <div className="text-xs mt-1 p-1 bg-indigo-50 dark:bg-indigo-900/20 rounded border border-indigo-100 dark:border-indigo-800">
+              <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+                Depends on:{" "}
+              </span>
+              <span>{dependsOn.join(", ")}</span>
+            </div>
+          )}
+
           {showDetails &&
             lateStart !== undefined &&
             lateFinish !== undefined && (
@@ -119,65 +148,59 @@ export function CustomEdge({
 
   // Determine if this is a critical path edge
   const isCritical = data?.isCritical || false;
+  const hasCoDependency = data?.hasCoDependency || false;
 
   return (
     <>
-      <BaseEdge
-        path={edgePath}
-        markerEnd={markerEnd}
-        style={{
-          ...style,
-          strokeWidth: isCritical ? 3 : 2,
-          stroke: isCritical ? "#ef4444" : "#94a3b8",
-          ...(!showDetails
-            ? {}
-            : {
-                strokeDasharray: "5,5",
-                animation: "flowAnimation 30s linear infinite",
-              }),
-        }}
-      />
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
       <EdgeLabelRenderer>
-        <div
-          style={{
-            position: "absolute",
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-            pointerEvents: "all",
-          }}
-          className="nodrag nopan"
-        >
+        {data && (
           <div
+            style={{
+              position: "absolute",
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              pointerEvents: "all",
+            }}
             className={cn(
-              "px-3 py-1.5 rounded-md shadow-md border text-sm select-none",
-              "transition-all duration-200 relative",
+              "bg-white dark:bg-gray-900",
+              "shadow-md",
+              "border border-gray-200 dark:border-gray-800",
+              "rounded-md",
+              "p-1",
+              "flex items-center gap-2",
               isCritical
-                ? "bg-red-50 border-red-200 dark:bg-red-900/30 dark:border-red-700"
-                : "bg-white dark:bg-background border-gray-200 dark:border-gray-700",
-              "hover:shadow-lg"
+                ? "border-red-300 dark:border-red-800/50 bg-red-50/80 dark:bg-red-950/50"
+                : hasCoDependency
+                ? "border-indigo-300 dark:border-indigo-800/50 bg-indigo-50/80 dark:bg-indigo-950/50"
+                : ""
             )}
             onClick={onEdgeClick}
           >
             {formatLabel()}
 
-            <div className="absolute -top-1 -right-1 flex items-center space-x-1">
+            <div className="flex items-center gap-1">
               <button
-                className="w-6 h-6 flex items-center justify-center rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                onClick={toggleDetails}
+                type="button"
+                className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                onClick={onEdgeClick}
               >
-                <InfoIcon size={12} />
+                <PencilIcon size={14} />
               </button>
               <button
-                className="w-6 h-6 flex items-center justify-center rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdgeClick();
-                }}
+                type="button"
+                className={cn(
+                  "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300",
+                  "p-1 rounded-full",
+                  "hover:bg-gray-100 dark:hover:bg-gray-800",
+                  showDetails && "bg-gray-100 dark:bg-gray-800"
+                )}
+                onClick={toggleDetails}
               >
-                <PencilIcon size={12} />
+                <InfoIcon size={14} />
               </button>
             </div>
           </div>
-        </div>
+        )}
       </EdgeLabelRenderer>
     </>
   );

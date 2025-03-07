@@ -20,6 +20,14 @@ type CircularNodeData = {
   isCritical?: boolean;
   mode: DiagramMode;
   shape?: NodeShape;
+  isStartEvent?: boolean;
+  isEndEvent?: boolean;
+  label?: string;
+  style?: {
+    backgroundColor?: string;
+    color?: string;
+    borderColor?: string;
+  };
 };
 
 interface ExtendedNodeProps extends NodeProps<CircularNodeData> {
@@ -111,11 +119,20 @@ export function CircularNode({
 
   // Render different node shapes
   const renderShapedNode = () => {
+    // Get custom styling
+    const customStyle = data.style
+      ? {
+          backgroundColor: data.style.backgroundColor,
+          borderColor: data.style.borderColor,
+          color: data.style.color,
+        }
+      : {};
+
     const baseClasses = cn(
       "flex items-center justify-center",
       "transition-all duration-200",
       "shadow-lg",
-      isCritical
+      !data.isStartEvent && !data.isEndEvent && isCritical
         ? "border-red-500 dark:border-red-500 border-2 bg-red-50 dark:bg-red-950/30"
         : "border-primary border bg-background",
       selected
@@ -124,6 +141,35 @@ export function CircularNode({
       mode === "delete" &&
         "opacity-70 hover:opacity-100 hover:border-destructive"
     );
+
+    // Special content for Start/End nodes
+    if (data.isStartEvent || data.isEndEvent) {
+      return (
+        <div
+          className={cn(baseClasses, "w-24 h-24 rounded-full", "border-2")}
+          style={customStyle}
+        >
+          <div className="flex flex-col items-center py-1.5 w-full">
+            <div
+              className="font-bold text-xl mb-1"
+              style={
+                data.style?.color ? { color: data.style.color } : undefined
+              }
+            >
+              {data.label || (data.isStartEvent ? "Start" : "End")}
+            </div>
+            <div
+              className="text-[10px] font-medium"
+              style={
+                data.style?.color ? { color: data.style.color } : undefined
+              }
+            >
+              Event {data.eventNumber}
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     const nodeContent = (
       <div className="flex flex-col items-center py-1.5 w-full">
@@ -243,6 +289,7 @@ export function CircularNode({
           "border-2",
           isCritical && "critical-node"
         )}
+        style={data.isStartEvent || data.isEndEvent ? customStyle : undefined}
       >
         {nodeContent}
       </div>
