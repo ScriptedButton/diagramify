@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DiagramMode } from "./types";
+import { toPng, toSvg, toJpeg } from "html-to-image";
 
 interface DiagramToolbarProps {
   onAddNode: () => void;
@@ -38,6 +39,9 @@ interface DiagramToolbarProps {
   onRedo?: () => void;
   undoable?: boolean;
   redoable?: boolean;
+  getDiagramData?: () => { nodes: any[]; edges: any[] };
+  diagramRef?: React.RefObject<HTMLDivElement | null>;
+  diagramType?: "AOA" | "AON";
 }
 
 export function DiagramToolbar({
@@ -50,6 +54,9 @@ export function DiagramToolbar({
   onRedo,
   undoable = false,
   redoable = false,
+  getDiagramData,
+  diagramRef,
+  diagramType = "AON",
 }: DiagramToolbarProps) {
   const handleZoomIn = () => {
     setZoom(Math.min(2, zoom * 1.2));
@@ -78,6 +85,82 @@ export function DiagramToolbar({
         return <Trash className="h-4 w-4" />;
       default:
         return <MousePointer className="h-4 w-4" />;
+    }
+  };
+
+  // Save diagram data to localStorage
+  const handleSave = () => {
+    if (!getDiagramData) {
+      console.error("getDiagramData function not provided");
+      return;
+    }
+
+    try {
+      const data = getDiagramData();
+      localStorage.setItem(
+        "diagramify-save",
+        JSON.stringify({
+          diagramType,
+          timestamp: new Date().toISOString(),
+          data,
+        })
+      );
+
+      // Show success message
+      alert("Diagram saved successfully!");
+    } catch (error) {
+      console.error("Error saving diagram:", error);
+      alert("Failed to save diagram. Please try again.");
+    }
+  };
+
+  // Export diagram as image
+  const handleExport = async (format: "png" | "svg" | "jpeg" = "png") => {
+    if (!diagramRef?.current) {
+      console.error("Diagram reference not available");
+      return;
+    }
+
+    try {
+      let dataUrl;
+      const fileName = `diagramify-${diagramType}-${
+        new Date().toISOString().split("T")[0]
+      }`;
+
+      switch (format) {
+        case "svg":
+          dataUrl = await toSvg(diagramRef.current, {
+            filter: (node: Element) =>
+              !node.classList?.contains("react-flow__minimap") &&
+              !node.classList?.contains("react-flow__controls"),
+          });
+          break;
+        case "jpeg":
+          dataUrl = await toJpeg(diagramRef.current, {
+            quality: 0.95,
+            filter: (node: Element) =>
+              !node.classList?.contains("react-flow__minimap") &&
+              !node.classList?.contains("react-flow__controls"),
+          });
+          break;
+        case "png":
+        default:
+          dataUrl = await toPng(diagramRef.current, {
+            filter: (node: Element) =>
+              !node.classList?.contains("react-flow__minimap") &&
+              !node.classList?.contains("react-flow__controls"),
+          });
+          break;
+      }
+
+      // Create a download link and trigger it
+      const link = document.createElement("a");
+      link.download = `${fileName}.${format}`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error("Error exporting diagram:", error);
+      alert("Failed to export diagram. Please try again.");
     }
   };
 
@@ -198,15 +281,38 @@ export function DiagramToolbar({
           <span className="hidden sm:inline">Share</span>
         </Button>
 
-        <Button variant="outline" size="sm" className="h-8 gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1"
+          onClick={handleSave}
+        >
           <Save className="h-4 w-4" />
           <span className="hidden sm:inline">Save</span>
         </Button>
 
-        <Button variant="default" size="sm" className="h-8 gap-1">
-          <Download className="h-4 w-4" />
-          <span className="hidden sm:inline">Export</span>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="default" size="sm" className="h-8 gap-1">
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Export</span>
+              <ChevronDown className="h-4 w-4 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Export Format</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleExport("png")}>
+              PNG Image
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport("jpeg")}>
+              JPEG Image
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport("svg")}>
+              SVG Vector
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

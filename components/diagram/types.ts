@@ -10,6 +10,7 @@ export interface NodeData {
   latestFinish?: number;
   slack?: number;
   isCritical?: boolean;
+  shape?: "rectangle" | "circle" | "triangle" | "hexagon";
 }
 
 export interface EdgeData {
@@ -26,6 +27,8 @@ export interface Point {
 }
 
 export type DiagramMode = "select" | "connect" | "add" | "delete";
+
+export type NodeShape = "rectangle" | "circle" | "triangle" | "hexagon";
 
 // Extend Window interface to include our custom function
 declare global {

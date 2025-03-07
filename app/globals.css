@@ -124,3 +124,67 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom shapes for nodes */
+.clip-path-triangle {
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+}
+
+.clip-path-hexagon {
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+
+/* Flow animations for critical paths */
+@keyframes flowAnimation {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pulseGlow {
+  0% {
+    filter: drop-shadow(0 0 0px rgba(239, 68, 68, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.7));
+  }
+  100% {
+    filter: drop-shadow(0 0 0px rgba(239, 68, 68, 0.4));
+  }
+}
+
+.critical-node {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+/* React Flow Custom Styles */
+.react-flow__edge-path-selector {
+  stroke-width: 10;
+  opacity: 0;
+}
+
+.react-flow__edge-text {
+  font-size: 12px;
+}
+
+.react-flow__node {
+  cursor: grab;
+}
+
+.react-flow__node.selected {
+  cursor: grabbing;
+}
+
+.react-flow__controls-button {
+  border-radius: 4px;
+  color: #333;
+}
+
+/* Improved hover effects */
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3;
+  transition: all 0.2s ease;
+}
