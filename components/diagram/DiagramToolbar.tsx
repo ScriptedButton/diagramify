@@ -115,9 +115,16 @@ export function DiagramToolbar({
   };
 
   // Export diagram as image
-  const handleExport = async (format: "png" | "svg" | "jpeg" = "png") => {
-    if (!diagramRef?.current) {
+  const handleExport = async (
+    format: "png" | "svg" | "jpeg" | "json" = "png"
+  ) => {
+    if (!diagramRef?.current && format !== "json") {
       console.error("Diagram reference not available");
+      return;
+    }
+
+    if (!getDiagramData && format === "json") {
+      console.error("getDiagramData function not provided");
       return;
     }
 
@@ -129,23 +136,40 @@ export function DiagramToolbar({
 
       switch (format) {
         case "svg":
-          dataUrl = await toSvg(diagramRef.current, {
+          dataUrl = await toSvg(diagramRef!.current!, {
             filter: (node: Element) =>
               !node.classList?.contains("react-flow__minimap") &&
               !node.classList?.contains("react-flow__controls"),
           });
           break;
         case "jpeg":
-          dataUrl = await toJpeg(diagramRef.current, {
+          dataUrl = await toJpeg(diagramRef!.current!, {
             quality: 0.95,
             filter: (node: Element) =>
               !node.classList?.contains("react-flow__minimap") &&
               !node.classList?.contains("react-flow__controls"),
           });
           break;
+        case "json":
+          // Export as JSON
+          const diagramData = getDiagramData!();
+          const jsonString = JSON.stringify(
+            {
+              diagramType,
+              timestamp: new Date().toISOString(),
+              data: diagramData,
+            },
+            null,
+            2
+          );
+
+          // Create a Blob and generate URL
+          const blob = new Blob([jsonString], { type: "application/json" });
+          dataUrl = URL.createObjectURL(blob);
+          break;
         case "png":
         default:
-          dataUrl = await toPng(diagramRef.current, {
+          dataUrl = await toPng(diagramRef!.current!, {
             filter: (node: Element) =>
               !node.classList?.contains("react-flow__minimap") &&
               !node.classList?.contains("react-flow__controls"),
@@ -158,10 +182,76 @@ export function DiagramToolbar({
       link.download = `${fileName}.${format}`;
       link.href = dataUrl;
       link.click();
+
+      // Clean up the URL object if we created one
+      if (format === "json") {
+        URL.revokeObjectURL(dataUrl);
+      }
     } catch (error) {
       console.error("Error exporting diagram:", error);
       alert("Failed to export diagram. Please try again.");
     }
+  };
+
+  // Import diagram from JSON file
+  const handleImport = () => {
+    // Create file input element
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = ".json";
+
+    fileInput.onchange = (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0];
+
+      if (file) {
+        const reader = new FileReader();
+
+        reader.onload = (event) => {
+          try {
+            const content = event.target?.result as string;
+            const parsedData = JSON.parse(content);
+
+            // Verify the imported data has the correct structure
+            if (
+              parsedData &&
+              parsedData.data &&
+              parsedData.data.nodes &&
+              parsedData.data.edges
+            ) {
+              // Check if diagram type matches
+              if (parsedData.diagramType !== diagramType) {
+                if (
+                  confirm(
+                    `This is a ${parsedData.diagramType} diagram, but you're currently in ${diagramType} mode. Import anyway?`
+                  )
+                ) {
+                  // User confirmed, proceed with import
+                  localStorage.setItem("diagramify-save", content);
+                  window.location.reload(); // Reload to apply the new diagram
+                }
+              } else {
+                // Same diagram type, proceed with import
+                localStorage.setItem("diagramify-save", content);
+                window.location.reload(); // Reload to apply the new diagram
+              }
+            } else {
+              alert("Invalid diagram file format.");
+            }
+          } catch (error) {
+            console.error("Error parsing JSON:", error);
+            alert(
+              "Failed to parse the imported file. Please ensure it is a valid JSON file."
+            );
+          }
+        };
+
+        reader.readAsText(file);
+      }
+    };
+
+    // Trigger the file input click
+    fileInput.click();
   };
 
   return (
@@ -300,7 +390,7 @@ export function DiagramToolbar({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Export Format</DropdownMenuLabel>
+            <DropdownMenuLabel>Export Options</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => handleExport("png")}>
               PNG Image
@@ -310,6 +400,13 @@ export function DiagramToolbar({
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleExport("svg")}>
               SVG Vector
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport("json")}>
+              JSON Data
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleImport}>
+              Import from JSON
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
