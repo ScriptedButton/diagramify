@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import { motion } from "motion/react";
-import { Card, CardContent } from "@/components/ui/card";
 import { DiagramMode, NodeShape } from "../types";
 import { cn } from "@/lib/utils";
 import {
@@ -11,6 +10,7 @@ import {
   ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
 } from "@/components/ui/context-menu";
 
 type ActivityData = {
@@ -26,6 +26,7 @@ type ActivityData = {
   shape?: NodeShape;
   isStartNode?: boolean;
   isEndNode?: boolean;
+  simpleMode?: boolean;
   style?: {
     backgroundColor?: string;
     color?: string;
@@ -45,34 +46,25 @@ export function ActivityNode({
 }: ExtendedNodeProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(data.label);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const mode = data.mode || "select";
+  const { mode } = data;
   const isCritical = data.isCritical || false;
-  const shape = data.shape || "rectangle";
 
+  // Handle text input changes
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEditValue(e.target.value);
   };
 
+  // Save the edited text
   const handleTextSave = () => {
     if (editValue.trim() !== "") {
-      // Update the node data with the new label
-      updateNodeData?.({
-        ...data,
-        label: editValue.trim(),
-      });
-    } else {
-      // If empty, reset to original value
-      setEditValue(data.label);
+      updateNodeData?.({ ...data, label: editValue.trim() });
     }
     setIsEditing(false);
   };
 
+  // Handle shape change from context menu
   const handleShapeChange = (newShape: NodeShape) => {
-    updateNodeData?.({
-      ...data,
-      shape: newShape,
-    });
+    updateNodeData?.({ ...data, shape: newShape });
   };
 
   // Base classes for all shapes
@@ -95,189 +87,134 @@ export function ActivityNode({
 
   // Render the node based on its shape
   const renderShapedNode = () => {
-    const content = (
-      <CardContent className="p-3">
-        <div className="text-center">
-          {isEditing && mode === "select" ? (
-            <input
-              ref={inputRef}
-              className="w-full border-0 bg-transparent text-center focus:outline-none"
-              value={editValue}
-              onChange={handleTextChange}
-              onBlur={handleTextSave}
-              onKeyDown={(e) => e.key === "Enter" && handleTextSave()}
-              autoFocus
-            />
-          ) : (
-            <div
-              className="font-medium"
-              onDoubleClick={() => mode === "select" && setIsEditing(true)}
-              style={
-                data.style?.color ? { color: data.style.color } : undefined
-              }
-            >
-              {data.label}
-            </div>
-          )}
+    const baseClasses = getBaseClasses();
+
+    // For start/end nodes, show a special design
+    if (data.isStartNode || data.isEndNode) {
+      return (
+        <div
+          className={baseClasses}
+          style={
+            data.style
+              ? {
+                  backgroundColor: data.style.backgroundColor,
+                  color: data.style.color,
+                  borderColor: data.style.borderColor,
+                }
+              : undefined
+          }
+        >
+          <div className="truncate font-semibold text-center w-full px-2">
+            {data.label || (data.isStartNode ? "Start" : "End")}
+          </div>
         </div>
+      );
+    }
 
-        <div className="mt-2 text-xs grid grid-cols-2 gap-x-2 gap-y-1">
-          <div className="text-muted-foreground">Duration:</div>
-          <div className="text-right">{data.duration}</div>
+    // Simple mode just shows activity name and duration
+    if (data.simpleMode) {
+      return (
+        <div className={baseClasses}>
+          <div className="flex flex-col items-center justify-center p-2 w-full h-full">
+            <div className="font-semibold mb-1 truncate w-full text-center">
+              {isEditing ? (
+                <input
+                  autoFocus
+                  value={editValue}
+                  onChange={handleTextChange}
+                  onBlur={handleTextSave}
+                  onKeyDown={(e) => e.key === "Enter" && handleTextSave()}
+                  className="w-full text-center border px-1 rounded"
+                />
+              ) : (
+                <div
+                  className="cursor-pointer"
+                  onClick={() => setIsEditing(true)}
+                >
+                  {data.label}
+                </div>
+              )}
+            </div>
 
-          {data.earliestStart !== undefined && (
-            <>
-              <div className="text-muted-foreground">ES:</div>
-              <div className="text-right">{data.earliestStart}</div>
-            </>
-          )}
+            <div className="text-sm font-medium opacity-90">
+              Duration: {data.duration}
+            </div>
+          </div>
+        </div>
+      );
+    }
 
-          {data.earliestFinish !== undefined && (
-            <>
-              <div className="text-muted-foreground">EF:</div>
-              <div className="text-right">{data.earliestFinish}</div>
-            </>
-          )}
-
-          {data.latestStart !== undefined && (
-            <>
-              <div className="text-muted-foreground">LS:</div>
-              <div className="text-right">{data.latestStart}</div>
-            </>
-          )}
-
-          {data.latestFinish !== undefined && (
-            <>
-              <div className="text-muted-foreground">LF:</div>
-              <div className="text-right">{data.latestFinish}</div>
-            </>
-          )}
-
-          {data.slack !== undefined && (
-            <>
-              <div className="text-muted-foreground">Slack:</div>
+    // Full mode with all timing information
+    return (
+      <div className={baseClasses}>
+        <div className="flex flex-col p-2 w-full">
+          {/* Activity name */}
+          <div className="font-semibold mb-1 truncate">
+            {isEditing ? (
+              <input
+                autoFocus
+                value={editValue}
+                onChange={handleTextChange}
+                onBlur={handleTextSave}
+                onKeyDown={(e) => e.key === "Enter" && handleTextSave()}
+                className="w-full border px-1 rounded"
+              />
+            ) : (
               <div
+                className="cursor-pointer"
+                onClick={() => setIsEditing(true)}
+              >
+                {data.label}
+              </div>
+            )}
+          </div>
+
+          {/* Grid for timing details */}
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+            <div className="flex items-center">
+              <span className="font-medium mr-1 w-8">ES:</span>
+              <span className="text-blue-600 dark:text-blue-400">
+                {data.earliestStart ?? "-"}
+              </span>
+            </div>
+            <div className="flex items-center">
+              <span className="font-medium mr-1 w-8">EF:</span>
+              <span className="text-blue-600 dark:text-blue-400">
+                {data.earliestFinish ?? "-"}
+              </span>
+            </div>
+            <div className="flex items-center">
+              <span className="font-medium mr-1 w-8">LS:</span>
+              <span className="text-purple-600 dark:text-purple-400">
+                {data.latestStart ?? "-"}
+              </span>
+            </div>
+            <div className="flex items-center">
+              <span className="font-medium mr-1 w-8">LF:</span>
+              <span className="text-purple-600 dark:text-purple-400">
+                {data.latestFinish ?? "-"}
+              </span>
+            </div>
+            <div className="flex items-center col-span-2">
+              <span className="font-medium mr-1 w-8">Dur:</span>
+              <span>{data.duration}</span>
+            </div>
+            <div className="flex items-center col-span-2">
+              <span className="font-medium mr-1 w-8">Slack:</span>
+              <span
                 className={cn(
-                  "text-right",
-                  data.slack === 0 ? "text-red-500 font-medium" : ""
+                  data.slack === 0
+                    ? "text-red-600 font-semibold"
+                    : "text-green-600"
                 )}
               >
-                {data.slack}
-              </div>
-            </>
-          )}
+                {data.slack ?? "-"}
+              </span>
+            </div>
+          </div>
         </div>
-      </CardContent>
+      </div>
     );
-
-    // Get custom styles
-    const customStyle = data.style
-      ? {
-          backgroundColor: data.style.backgroundColor,
-          borderColor: data.style.borderColor,
-          color: data.style.color,
-        }
-      : {};
-
-    switch (shape) {
-      case "circle":
-        return (
-          <div
-            className={cn(
-              getBaseClasses(),
-              "rounded-full w-40 h-40 flex items-center justify-center border border-input bg-background"
-            )}
-            style={customStyle}
-          >
-            <div className="p-2 text-center">
-              <div className="font-medium">{data.label}</div>
-              <div className="mt-1 text-xs">Duration: {data.duration}</div>
-              {data.slack !== undefined && (
-                <div
-                  className={cn(
-                    "text-xs",
-                    data.slack === 0 ? "text-red-500 font-medium" : ""
-                  )}
-                >
-                  Slack: {data.slack}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-
-      case "triangle":
-        return (
-          <div className="relative w-40 h-40">
-            <div
-              className={cn(
-                getBaseClasses(),
-                "absolute inset-0 bg-background border border-input",
-                "clip-path-triangle"
-              )}
-              style={customStyle}
-            >
-              <div className="absolute inset-0 flex items-center justify-center p-2 text-center">
-                <div>
-                  <div className="font-medium">{data.label}</div>
-                  <div className="mt-1 text-xs">Duration: {data.duration}</div>
-                  {data.slack !== undefined && (
-                    <div
-                      className={cn(
-                        "text-xs",
-                        data.slack === 0 ? "text-red-500 font-medium" : ""
-                      )}
-                    >
-                      Slack: {data.slack}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case "hexagon":
-        return (
-          <div className="relative w-48 h-40">
-            <div
-              className={cn(
-                getBaseClasses(),
-                "absolute inset-0 bg-background border border-input",
-                "clip-path-hexagon"
-              )}
-              style={customStyle}
-            >
-              <div className="absolute inset-0 flex items-center justify-center p-3 text-center">
-                <div>
-                  <div className="font-medium">{data.label}</div>
-                  <div className="mt-1 text-xs">Duration: {data.duration}</div>
-                  {data.slack !== undefined && (
-                    <div
-                      className={cn(
-                        "text-xs",
-                        data.slack === 0 ? "text-red-500 font-medium" : ""
-                      )}
-                    >
-                      Slack: {data.slack}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      default:
-        return (
-          <Card
-            className={cn(getBaseClasses(), "w-60 border border-input")}
-            style={customStyle}
-          >
-            {content}
-          </Card>
-        );
-    }
   };
 
   return (
@@ -344,6 +281,62 @@ export function ActivityNode({
           <ContextMenuItem onSelect={() => handleShapeChange("hexagon")}>
             Hexagon
           </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
+          <ContextMenuItem
+            disabled={data.isStartNode}
+            onSelect={() =>
+              updateNodeData?.({
+                ...data,
+                isStartNode: true,
+                isEndNode: false,
+                style: {
+                  backgroundColor: "#4caf50",
+                  color: "white",
+                  borderColor: "#388e3c",
+                },
+                label: "Start",
+              })
+            }
+          >
+            Mark as Start Node
+          </ContextMenuItem>
+
+          <ContextMenuItem
+            disabled={data.isEndNode}
+            onSelect={() =>
+              updateNodeData?.({
+                ...data,
+                isEndNode: true,
+                isStartNode: false,
+                style: {
+                  backgroundColor: "#f44336",
+                  color: "white",
+                  borderColor: "#d32f2f",
+                },
+                label: "End",
+              })
+            }
+          >
+            Mark as End Node
+          </ContextMenuItem>
+
+          {(data.isStartNode || data.isEndNode) && (
+            <ContextMenuItem
+              onSelect={() =>
+                updateNodeData?.({
+                  ...data,
+                  isStartNode: false,
+                  isEndNode: false,
+                  style: undefined,
+                  label: "Activity",
+                })
+              }
+            >
+              Reset to Normal Node
+            </ContextMenuItem>
+          )}
         </ContextMenuContent>
       </ContextMenu>
     </div>

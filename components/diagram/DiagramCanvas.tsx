@@ -1336,6 +1336,19 @@ export function DiagramCanvas({
     [setNodes]
   );
 
+  // Update nodes when simple mode changes
+  useEffect(() => {
+    setNodes((nds) =>
+      nds.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          simpleMode,
+        },
+      }))
+    );
+  }, [simpleMode, setNodes]);
+
   return (
     <div className={cn("flex flex-col h-full relative", className)}>
       {/* Add global styles */}

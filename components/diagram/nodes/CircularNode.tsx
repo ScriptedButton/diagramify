@@ -10,6 +10,7 @@ import {
   ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
 } from "@/components/ui/context-menu";
 
 type CircularNodeData = {
@@ -22,6 +23,7 @@ type CircularNodeData = {
   isStartEvent?: boolean;
   isEndEvent?: boolean;
   label?: string;
+  simpleMode?: boolean;
   style?: {
     backgroundColor?: string;
     color?: string;
@@ -89,6 +91,21 @@ export function CircularNode({
 
   // Render different node shapes
   const renderShapedNode = () => {
+    // Base classes for the node
+    const baseClasses = cn(
+      "flex items-center justify-center",
+      "transition-all duration-200",
+      "shadow-lg",
+      !data.isStartEvent && !data.isEndEvent && data.isCritical
+        ? "border-red-500 dark:border-red-500 border-2 bg-red-50 dark:bg-red-950/30"
+        : "border-primary border bg-background",
+      selected
+        ? "ring-2 ring-blue-500 ring-opacity-80"
+        : "hover:ring-1 hover:ring-blue-400 hover:ring-opacity-50",
+      data.mode === "delete" &&
+        "opacity-70 hover:opacity-100 hover:border-destructive"
+    );
+
     // Get custom styling
     const customStyle = data.style
       ? {
@@ -96,21 +113,7 @@ export function CircularNode({
           borderColor: data.style.borderColor,
           color: data.style.color,
         }
-      : {};
-
-    const baseClasses = cn(
-      "flex items-center justify-center",
-      "transition-all duration-200",
-      "shadow-lg",
-      !data.isStartEvent && !data.isEndEvent && isCritical
-        ? "border-red-500 dark:border-red-500 border-2 bg-red-50 dark:bg-red-950/30"
-        : "border-primary border bg-background",
-      selected
-        ? "ring-2 ring-blue-500 ring-opacity-80"
-        : "hover:ring-1 hover:ring-blue-400 hover:ring-opacity-50",
-      mode === "delete" &&
-        "opacity-70 hover:opacity-100 hover:border-destructive"
-    );
+      : undefined;
 
     // Special content for Start/End nodes
     if (data.isStartEvent || data.isEndEvent) {
@@ -141,6 +144,44 @@ export function CircularNode({
       );
     }
 
+    // Simple mode just shows the event number
+    if (data.simpleMode) {
+      return (
+        <div
+          className={cn(
+            baseClasses,
+            "w-24 h-24 rounded-full",
+            "border-2",
+            data.isCritical && "critical-node"
+          )}
+        >
+          <div className="flex flex-col items-center justify-center w-full h-full">
+            <div
+              className="font-bold text-3xl"
+              onDoubleClick={() =>
+                handleStartEditing("eventNumber", data.eventNumber)
+              }
+            >
+              {isEditing === "eventNumber" ? (
+                <input
+                  ref={inputRef}
+                  className="w-16 text-center border-0 bg-transparent focus:outline-none"
+                  value={editValue}
+                  onChange={handleTextChange}
+                  onBlur={handleTextSave}
+                  onKeyDown={(e) => e.key === "Enter" && handleTextSave()}
+                  autoFocus
+                />
+              ) : (
+                data.eventNumber
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Full mode with all timing information
     const nodeContent = (
       <div className="flex flex-col items-center py-1.5 w-full">
         {/* Event number - larger and more prominent */}
@@ -257,7 +298,7 @@ export function CircularNode({
           baseClasses,
           "w-24 h-24 rounded-full",
           "border-2",
-          isCritical && "critical-node"
+          data.isCritical && "critical-node"
         )}
         style={data.isStartEvent || data.isEndEvent ? customStyle : undefined}
       >
@@ -356,6 +397,62 @@ export function CircularNode({
           >
             Change Event Number
           </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
+          <ContextMenuItem
+            disabled={data.isStartEvent}
+            onSelect={() =>
+              updateNodeData?.({
+                ...data,
+                isStartEvent: true,
+                isEndEvent: false,
+                style: {
+                  backgroundColor: "#4caf50",
+                  color: "white",
+                  borderColor: "#388e3c",
+                },
+                label: "Start",
+              })
+            }
+          >
+            Mark as Start Node
+          </ContextMenuItem>
+
+          <ContextMenuItem
+            disabled={data.isEndEvent}
+            onSelect={() =>
+              updateNodeData?.({
+                ...data,
+                isEndEvent: true,
+                isStartEvent: false,
+                style: {
+                  backgroundColor: "#f44336",
+                  color: "white",
+                  borderColor: "#d32f2f",
+                },
+                label: "End",
+              })
+            }
+          >
+            Mark as End Node
+          </ContextMenuItem>
+
+          {(data.isStartEvent || data.isEndEvent) && (
+            <ContextMenuItem
+              onSelect={() =>
+                updateNodeData?.({
+                  ...data,
+                  isStartEvent: false,
+                  isEndEvent: false,
+                  style: undefined,
+                  label: undefined,
+                })
+              }
+            >
+              Reset to Normal Node
+            </ContextMenuItem>
+          )}
         </ContextMenuContent>
       </ContextMenu>
     </div>
