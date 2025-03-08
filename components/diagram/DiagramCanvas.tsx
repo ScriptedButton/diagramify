@@ -13,7 +13,6 @@ import ReactFlow, {
   Node,
   Edge,
   NodeTypes,
-  EdgeTypes,
   BackgroundVariant,
   SelectionMode,
   NodeProps,
@@ -25,11 +24,28 @@ import { DiagramToolbar } from "./DiagramToolbar";
 import { DiagramMode, NodeData, EdgeData } from "./types";
 import { ActivityNode } from "./nodes/ActivityNode";
 import { CircularNode } from "./nodes/CircularNode";
-import { CustomEdge } from "./CustomEdge";
 import { Button } from "@/components/ui/button";
 import { Link } from "lucide-react";
 import * as dagre from "dagre";
 import { toPng, toJpeg, toSvg } from "html-to-image";
+
+// Add global styles for edge labels
+const globalStyles = `
+  .react-flow__edge-text {
+    font-size: 14px;
+    font-weight: 600;
+    background-color: rgba(255, 255, 255, 0.85);
+    padding: 3px 6px;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  
+  .dark .react-flow__edge-text {
+    background-color: rgba(30, 41, 59, 0.85);
+    color: #e2e8f0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+`;
 
 // Define custom node types with proper type for updateNodeData
 const nodeTypes: NodeTypes = {
@@ -51,11 +67,6 @@ const nodeTypes: NodeTypes = {
       }}
     />
   ),
-};
-
-// Define custom edge types
-const edgeTypes: EdgeTypes = {
-  custom: CustomEdge,
 };
 
 // Add a function to find and update linked co-dependencies
@@ -119,6 +130,7 @@ export function DiagramCanvas({
     []
   );
   const [dummyTargetActivity, setDummyTargetActivity] = useState<string>("D");
+  const [simpleMode, setSimpleMode] = useState(false);
 
   // Function to get current diagram data for saving
   const getDiagramData = useCallback(() => {
@@ -182,22 +194,30 @@ export function DiagramCanvas({
         }
 
         // Otherwise, just update the single edge
-        return eds.map((edge) =>
-          edge.id === edgeId
-            ? {
-                ...edge,
-                data: { ...edge.data, ...newData },
-                label:
-                  diagramType === "AOA"
-                    ? `${edge.data.activityId}(${
-                        newData.duration !== undefined
-                          ? newData.duration
-                          : edge.data.duration
-                      })`
-                    : newData.label,
-              }
-            : edge
-        );
+        return eds.map((edge) => {
+          if (edge.id === edgeId) {
+            const duration =
+              newData.duration !== undefined
+                ? newData.duration
+                : edge.data.duration;
+            const label =
+              diagramType === "AOA"
+                ? simpleMode
+                  ? `${edge.data.activityId}(${duration})`
+                  : `${edge.data.activityId}(ES:${edge.data.earlyStart},EF:${
+                      edge.data.earlyStart + duration
+                    })`
+                : newData.label;
+
+            return {
+              ...edge,
+              data: { ...edge.data, ...newData },
+              label,
+              labelStyle: { fontSize: "14px", fontWeight: "bold" },
+            };
+          }
+          return edge;
+        });
       });
     };
 
@@ -206,7 +226,40 @@ export function DiagramCanvas({
       delete window.updateDiagramNode;
       delete window.updateDiagramEdge;
     };
-  }, [setNodes, setEdges, diagramType]);
+  }, [setNodes, setEdges, diagramType, simpleMode]);
+
+  // Handle changes in simple mode by updating all edge labels
+  useEffect(() => {
+    console.log("Simple mode changed:", simpleMode);
+
+    if (diagramType === "AOA") {
+      // Update all edge labels when simple mode changes
+      setEdges((eds) =>
+        eds.map((edge) => {
+          if (edge.data?.activityId) {
+            const duration = edge.data.duration || 0;
+            const earlyStart = edge.data.earlyStart || 0;
+            const newLabel = simpleMode
+              ? `${edge.data.activityId}(${duration})`
+              : `${edge.data.activityId}(ES:${earlyStart},EF:${
+                  earlyStart + duration
+                })`;
+
+            return {
+              ...edge,
+              label: newLabel,
+              labelStyle: { fontSize: "14px", fontWeight: "bold" },
+              data: {
+                ...edge.data,
+                label: newLabel,
+              },
+            };
+          }
+          return edge;
+        })
+      );
+    }
+  }, [simpleMode, diagramType, setEdges]);
 
   // Setup global function to update the entire diagram from JSON
   useEffect(() => {
@@ -474,6 +527,7 @@ export function DiagramCanvas({
             type: MarkerType.ArrowClosed,
             color: hasCoDependency ? "#6366f1" : "#94a3b8",
           },
+          labelStyle: { fontSize: "14px", fontWeight: "bold" },
           data:
             diagramType === "AOA"
               ? {
@@ -483,7 +537,9 @@ export function DiagramCanvas({
                   earlyFinish: 1,
                   lateStart: 0,
                   lateFinish: 1,
-                  label: `${activityId}(1)`,
+                  label: simpleMode
+                    ? `${activityId}(1)`
+                    : `${activityId}(ES:0,EF:1)`,
                   hasCoDependency,
                   dependsOn: existingIncomingEdges
                     .map((e) => e.data?.activityId as string)
@@ -493,12 +549,17 @@ export function DiagramCanvas({
                   weight: 0,
                   label: "",
                 },
-          label: diagramType === "AOA" ? `${activityId}(1)` : "",
+          label:
+            diagramType === "AOA"
+              ? simpleMode
+                ? `${activityId}(1)`
+                : `${activityId}(ES:0,EF:1)`
+              : "",
         };
         setEdges((eds) => eds.concat(newEdge));
       }
     },
-    [mode, setEdges, edges, diagramType]
+    [mode, setEdges, edges, diagramType, simpleMode]
   );
 
   // Handle canvas click for adding nodes
@@ -1229,8 +1290,59 @@ export function DiagramCanvas({
     setShowDummyMaker,
   ]);
 
+  // Add node conversion handler
+  const handleNodeConversion = useCallback(
+    (nodeId: string, type: "start" | "end" | "normal") => {
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === nodeId) {
+            const style =
+              type === "start"
+                ? {
+                    backgroundColor: "#4caf50",
+                    color: "white",
+                    borderColor: "#388e3c",
+                  }
+                : type === "end"
+                ? {
+                    backgroundColor: "#f44336",
+                    color: "white",
+                    borderColor: "#d32f2f",
+                  }
+                : undefined;
+
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                isStartNode: type === "start",
+                isEndNode: type === "end",
+                isStartEvent: type === "start",
+                isEndEvent: type === "end",
+                style,
+                label:
+                  type === "start"
+                    ? "Start"
+                    : type === "end"
+                    ? "End"
+                    : node.data.label,
+              },
+            };
+          }
+          return node;
+        })
+      );
+    },
+    [setNodes]
+  );
+
   return (
     <div className={cn("flex flex-col h-full relative", className)}>
+      {/* Add global styles */}
+      <style jsx global>
+        {globalStyles}
+      </style>
+
       <DiagramToolbar
         mode={mode}
         setMode={setMode}
@@ -1251,6 +1363,9 @@ export function DiagramCanvas({
         autoLayoutDiagram={autoLayoutDiagram}
         addStartNode={addStartNode}
         addEndNode={addEndNode}
+        simpleMode={simpleMode}
+        setSimpleMode={setSimpleMode}
+        onConvertNode={handleNodeConversion}
       />
 
       {/* Dialog for creating dummy activities */}
@@ -1344,8 +1459,6 @@ export function DiagramCanvas({
           onConnect={onConnect}
           onInit={setReactFlowInstance}
           nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          defaultViewport={{ x: 0, y: 0, zoom: 1 }}
           minZoom={0.1}
           maxZoom={2}
           deleteKeyCode={null} // Disable default delete handling

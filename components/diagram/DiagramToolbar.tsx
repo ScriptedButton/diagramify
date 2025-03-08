@@ -54,6 +54,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { DiagramJsonEditor } from "./DiagramJsonEditor";
 import { Node, Edge } from "@reactflow/core";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface DiagramToolbarProps {
   onAddNode: () => void;
@@ -75,6 +83,9 @@ interface DiagramToolbarProps {
   autoLayoutDiagram?: () => void;
   addStartNode?: () => void;
   addEndNode?: () => void;
+  simpleMode?: boolean;
+  setSimpleMode?: (simple: boolean) => void;
+  onConvertNode?: (nodeId: string, type: "start" | "end" | "normal") => void;
 }
 
 // New component for co-dependency guidance
@@ -177,6 +188,9 @@ export function DiagramToolbar({
   autoLayoutDiagram,
   addStartNode,
   addEndNode,
+  simpleMode,
+  setSimpleMode,
+  onConvertNode,
 }: DiagramToolbarProps) {
   const [jsonEditorOpen, setJsonEditorOpen] = useState(false);
 
@@ -891,8 +905,69 @@ export function DiagramToolbar({
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Simple Mode Switch */}
+        {setSimpleMode && (
+          <div className="flex items-center gap-2 mr-2">
+            <Switch
+              id="simple-mode"
+              checked={simpleMode}
+              onCheckedChange={setSimpleMode}
+            />
+            <Label htmlFor="simple-mode" className="text-sm">
+              Simple Mode
+            </Label>
+          </div>
+        )}
+
         {/* Help for co-dependencies */}
         <CoDependencyHelp diagramType={diagramType} />
+
+        {/* Node Conversion Dropdown - Only show when in select mode */}
+        {mode === "select" && onConvertNode && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <CircleIcon size={16} />
+                Convert Node
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                onClick={() => {
+                  const nodeId = window.prompt(
+                    "Enter node ID to convert to Start node:"
+                  );
+                  if (nodeId) onConvertNode(nodeId, "start");
+                }}
+              >
+                <PlayIcon className="mr-2 h-4 w-4" />
+                Convert to Start
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  const nodeId = window.prompt(
+                    "Enter node ID to convert to End node:"
+                  );
+                  if (nodeId) onConvertNode(nodeId, "end");
+                }}
+              >
+                <StopCircleIcon className="mr-2 h-4 w-4" />
+                Convert to End
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  const nodeId = window.prompt(
+                    "Enter node ID to convert to Normal node:"
+                  );
+                  if (nodeId) onConvertNode(nodeId, "normal");
+                }}
+              >
+                <CircleIcon className="mr-2 h-4 w-4" />
+                Convert to Normal
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         {/* Dummy Activity Maker Button - Only show for AOA diagrams */}
         {diagramType === "AOA" && setShowDummyMaker && (
