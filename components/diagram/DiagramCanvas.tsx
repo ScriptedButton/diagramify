@@ -75,6 +75,24 @@ function DiagramCanvasContent({
     { nodes: CustomNode[]; edges: CustomEdge[] }[]
   >([]);
 
+  // Add title state with default value
+  const defaultTitle = `${diagramType === "AOA" ? "Activity-On-Arrow" : "Activity-On-Node"} Diagram`;
+  const [diagramTitle, setDiagramTitle] = useState(defaultTitle);
+
+  // Load saved title on mount
+  useEffect(() => {
+    const savedTitle = localStorage.getItem("diagramify-title");
+    if (savedTitle) {
+      setDiagramTitle(savedTitle);
+    }
+  }, []);
+
+  // Handle title changes
+  const handleTitleChange = useCallback((newTitle: string) => {
+    setDiagramTitle(newTitle);
+    localStorage.setItem("diagramify-title", newTitle);
+  }, []);
+
   // Use the node management hook
   const { addNode, addStartNode, addEndNode } = useNodeManagement({
     reactFlowInstance,
@@ -515,6 +533,8 @@ function DiagramCanvasContent({
           diagramType={diagramType}
           onNodeDelete={handleNodeDelete}
           onAddNode={addNode}
+          initialTitle={diagramTitle}
+          onTitleChange={handleTitleChange}
         />
       </div>
     </div>

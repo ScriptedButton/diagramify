@@ -1,26 +1,28 @@
-import { memo } from "react";
+import { memo, useState, useEffect } from "react";
 import {
   ReactFlow,
-  Background,
   Controls,
   Panel,
+  Background,
   BackgroundVariant,
-  SelectionMode,
-  useReactFlow,
-  useNodes,
-  useEdges,
   type Node,
   type Edge,
   type NodeChange,
   type EdgeChange,
   type Connection,
   type ReactFlowInstance,
+  SelectionMode,
+  useReactFlow,
+  useNodes,
+  useEdges,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { DiagramMode } from "./types";
 import { NODE_TYPES } from "./utils/NodeTypes";
 import { EDGE_TYPES } from "./utils/EdgeTypes";
 import { ConnectionLine } from "./ConnectionLine";
+import { cn } from "@/lib/utils";
+import { DiagramMode } from "./types";
+
 interface DiagramContentProps {
   nodes: Node[];
   edges: Edge[];
@@ -33,6 +35,8 @@ interface DiagramContentProps {
   onNodeDelete: (nodeId: string) => void;
   onAddNode: (position?: { x: number; y: number }) => void;
   onReconnect: (oldEdge: Edge, newConnection: Connection) => void;
+  initialTitle?: string;
+  onTitleChange?: (title: string) => void;
 }
 
 export const DiagramContent = memo(function DiagramContent({
@@ -47,10 +51,19 @@ export const DiagramContent = memo(function DiagramContent({
   onNodeDelete,
   onAddNode,
   onReconnect,
+  initialTitle,
+  onTitleChange,
 }: DiagramContentProps) {
   const { screenToFlowPosition } = useReactFlow();
   const currentNodes = useNodes();
   const currentEdges = useEdges();
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editingValue, setEditingValue] = useState(initialTitle || "");
+
+  // Update editing value when initial title changes
+  useEffect(() => {
+    setEditingValue(initialTitle || "");
+  }, [initialTitle]);
 
   const handleDelete = () => {
     if (mode === "delete") {
@@ -71,6 +84,31 @@ export const DiagramContent = memo(function DiagramContent({
       if (selectedNodes.length > 0) {
         selectedNodes.forEach((node: Node) => onNodeDelete(node.id));
       }
+    }
+  };
+
+  const handleTitleClick = () => {
+    setIsEditingTitle(true);
+    setEditingValue(initialTitle || "");
+  };
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditingValue(e.target.value);
+  };
+
+  const handleTitleSave = () => {
+    setIsEditingTitle(false);
+    if (onTitleChange && editingValue.trim()) {
+      onTitleChange(editingValue);
+    }
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleTitleSave();
+    } else if (e.key === "Escape") {
+      setIsEditingTitle(false);
+      setEditingValue(initialTitle || "");
     }
   };
 
@@ -118,7 +156,10 @@ export const DiagramContent = memo(function DiagramContent({
       edgesReconnectable={mode === "connect"}
       snapToGrid
       snapGrid={[10, 10]}
-      className="w-full h-full bg-gradient-to-br from-background to-muted/50"
+      className={cn(
+        "w-full h-full bg-gradient-to-br from-background to-muted/50",
+        "transition-colors duration-100"
+      )}
       proOptions={{ hideAttribution: true }}
       isValidConnection={(connection) => {
         // Only allow connections in connect mode
@@ -197,10 +238,25 @@ export const DiagramContent = memo(function DiagramContent({
         position="top-left"
         className="bg-background/80 p-2 rounded-md border shadow-sm backdrop-blur"
       >
-        <div className="text-xs text-muted-foreground">
-          {diagramType === "AOA" ? "Activity-On-Arrow" : "Activity-On-Node"}{" "}
-          Diagram
-        </div>
+        {isEditingTitle ? (
+          <input
+            type="text"
+            value={editingValue}
+            onChange={handleTitleChange}
+            onBlur={handleTitleSave}
+            onKeyDown={handleTitleKeyDown}
+            className="text-xs text-muted-foreground bg-transparent border-none focus:outline-none w-full"
+            autoFocus
+          />
+        ) : (
+          <div
+            className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+            onClick={handleTitleClick}
+            title="Click to edit title"
+          >
+            {initialTitle}
+          </div>
+        )}
       </Panel>
     </ReactFlow>
   );
