@@ -22,31 +22,37 @@ export function useEdgeHandling({
   const onConnect = useCallback(
     (params: Connection) => {
       if (mode === "connect" && params.source && params.target) {
-        const existingEdgeCount = edges.filter(
+        // Check for existing edges between these nodes
+        const existingEdge = edges.find(
           (edge) =>
             edge.source === params.source && edge.target === params.target
-        ).length;
+        );
 
-        const activityId = generateUniqueActivityId(edges);
+        if (existingEdge) {
+          console.log("Edge already exists between these nodes");
+          return;
+        }
+
+        // Check for incoming edges to the target node for co-dependency
         const existingIncomingEdges = edges.filter(
           (edge) => edge.target === params.target
         );
         const hasCoDependency = existingIncomingEdges.length > 0;
 
-        const sourceHandle =
-          existingEdgeCount > 0
-            ? `source-${existingEdgeCount}`
-            : params.sourceHandle;
-        const targetHandle =
-          existingEdgeCount > 0
-            ? `target-${existingEdgeCount}`
-            : params.targetHandle;
+        // Generate a unique activity ID for AOA diagrams
+        const activityId =
+          diagramType === "AOA" ? generateUniqueActivityId(edges) : undefined;
 
-        const edgeLineStyle = hasCoDependency
-          ? { stroke: "#6366f1", strokeWidth: 2 }
-          : { stroke: "#94a3b8", strokeWidth: 2 };
-
+        // Set edge style based on type
         const edgeType = edgeStyle === "bezier" ? "default" : edgeStyle;
+        const edgeLineStyle = {
+          stroke: hasCoDependency ? "#6366f1" : "#94a3b8",
+          strokeWidth: 2,
+        };
+
+        // Handle source and target handles
+        const sourceHandle = params.sourceHandle || "right";
+        const targetHandle = params.targetHandle || "left";
 
         const newEdge: Edge = {
           id: `edge-${Date.now()}`,
@@ -66,14 +72,6 @@ export function useEdgeHandling({
             diagramType === "AOA"
               ? {
                   activityId,
-                  duration: 1,
-                  earlyStart: 0,
-                  earlyFinish: 1,
-                  lateStart: 0,
-                  lateFinish: 1,
-                  label: !advancedMode
-                    ? `${activityId}(1)`
-                    : `${activityId}(ES:0,EF:1)`,
                   hasCoDependency,
                   dependsOn: existingIncomingEdges
                     .map((e) => e.data?.activityId as string)

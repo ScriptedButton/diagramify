@@ -9,6 +9,17 @@ import {
 } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 
+interface EdgeData {
+  activityId?: string;
+  duration?: number;
+  earlyStart?: number;
+  earlyFinish?: number;
+  label?: string;
+  isCritical?: boolean;
+  hasCoDependency?: boolean;
+  advancedMode?: boolean;
+}
+
 export function CustomEdge({
   id,
   sourceX,
@@ -61,13 +72,18 @@ export function CustomEdge({
   }
 
   const onEdgeClick = useCallback(() => {
+    const currentDuration = data?.duration?.toString() || "";
     const newDuration = window.prompt(
-      "Enter duration:",
-      data?.duration?.toString() || "1"
+      "Enter duration (leave empty for no duration):",
+      currentDuration
     );
     if (newDuration !== null) {
-      const duration = parseInt(newDuration, 10);
-      if (!isNaN(duration) && duration > 0) {
+      const duration =
+        newDuration.trim() === "" ? undefined : parseInt(newDuration, 10);
+      if (
+        newDuration.trim() === "" ||
+        (typeof duration === "number" && duration > 0)
+      ) {
         window.updateDiagramEdge?.(id, { ...data, duration });
       }
     }
@@ -77,41 +93,49 @@ export function CustomEdge({
   const formatLabel = () => {
     if (!data) return null;
 
-    const { activityId, duration, isCritical, hasCoDependency, advancedMode } =
-      data;
+    const edgeData = data as EdgeData;
+    const {
+      activityId,
+      duration,
+      isCritical,
+      hasCoDependency,
+      advancedMode,
+      earlyStart,
+    } = edgeData;
 
-    if (activityId && typeof duration === "number") {
-      const earlyStart =
-        typeof data.earlyStart === "number" ? data.earlyStart : 0;
-      const labelText = !advancedMode
-        ? `${activityId}(${duration})`
-        : `${activityId}(ES:${earlyStart},EF:${earlyStart + duration})`;
+    if (!activityId) return null;
 
-      return (
-        <div className="flex items-center">
-          <div
-            className={cn(
-              "font-bold",
-              isCritical ? "text-red-600" : "",
-              hasCoDependency ? "text-indigo-600" : ""
-            )}
-          >
-            {labelText}
-          </div>
-        </div>
-      );
+    let labelText: string = activityId;
+
+    if (typeof duration === "number") {
+      if (!advancedMode) {
+        labelText = `${activityId}(${duration})`;
+      } else {
+        const es = typeof earlyStart === "number" ? earlyStart : 0;
+        labelText = `${activityId}(ES:${es},EF:${es + duration})`;
+      }
     }
-    return null;
+
+    return (
+      <div className="flex items-center">
+        <div
+          className={cn(
+            "font-bold",
+            isCritical ? "text-red-600" : "",
+            hasCoDependency ? "text-indigo-600" : ""
+          )}
+        >
+          {labelText}
+        </div>
+      </div>
+    );
   };
 
   // Check if we should render the label
   const shouldRenderLabel = () => {
     if (!data) return false;
-
-    return (
-      (typeof data.label === "string" && data.label.length > 0) ||
-      (typeof data.activityId === "string" && typeof data.duration === "number")
-    );
+    const edgeData = data as EdgeData;
+    return typeof edgeData.activityId === "string";
   };
 
   const label = formatLabel();
