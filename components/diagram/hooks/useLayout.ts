@@ -1,11 +1,6 @@
 import { useCallback } from "react";
 import { Node, Edge, ReactFlowInstance } from "@xyflow/react";
-import * as dagre from "dagre";
-
-interface NodeTiming {
-  earliest: number;
-  level?: number;
-}
+import ELK, { ElkNode, ElkExtendedEdge } from "elkjs/lib/elk.bundled.js";
 
 interface UseLayoutProps {
   nodes: Node[];
@@ -22,142 +17,98 @@ export function useLayout({
   reactFlowInstance,
   setNodes,
 }: UseLayoutProps) {
-  const autoLayoutDiagram = useCallback(() => {
-    if (!reactFlowInstance || diagramType !== "AOA" || nodes.length === 0) {
+  const autoLayoutDiagram = useCallback(async () => {
+    if (!reactFlowInstance || nodes.length === 0) {
       return;
     }
 
-    // Create a new dagre graph
-    const g = new dagre.graphlib.Graph();
+    // Create a new ELK instance
+    const elk = new ELK();
 
-    // Configure graph settings
-    g.setGraph({
-      rankdir: "LR",
-      nodesep: 150,
-      ranksep: 200,
-      align: "DL",
-      marginx: 50,
-      marginy: 50,
-    });
-    g.setDefaultEdgeLabel(() => ({}));
+    // Prepare the graph for ELK with proper typing
+    const elkNodes = nodes.map((node) => ({
+      id: node.id,
+      width: 80,
+      height: 80,
+    }));
 
-    // Calculate node timings
-    const nodeTimings = new Map<string, NodeTiming>();
+    // Add labels and edge routing info for edges with correct typing
+    const elkEdges: ElkExtendedEdge[] = edges.map((edge) => ({
+      id: edge.id || `e-${edge.source}-${edge.target}`,
+      sources: [edge.source],
+      targets: [edge.target],
+      labels: edge.label ? [{ text: String(edge.label) }] : undefined,
+      layoutOptions:
+        diagramType === "AOA"
+          ? { "edgeLabels.placement": "CENTER" }
+          : { "edgeLabels.placement": "CENTER" },
+    }));
 
-    // Initialize all nodes with earliest time 0
-    nodes.forEach((node) => {
-      nodeTimings.set(node.id, { earliest: 0 });
-    });
+    // Create the ELK graph structure with correct typing
+    const elkGraph: ElkNode = {
+      id: "root",
+      layoutOptions:
+        diagramType === "AOA"
+          ? {
+              algorithm: "layered",
+              direction: "RIGHT",
+              "spacing.nodeNode": "80",
+              "layered.spacing.nodeNodeBetweenLayers": "200",
+              padding: "[50, 50, 50, 50]",
+              edgeRouting: "ORTHOGONAL",
+              "layered.crossingMinimization.strategy": "LAYER_SWEEP",
+              "layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+              "layered.considerModelOrder.strategy": "NODES_AND_EDGES",
+              "layered.layering.strategy": "NETWORK_SIMPLEX",
+            }
+          : {
+              algorithm: "layered",
+              direction: "RIGHT",
+              "spacing.nodeNode": "60",
+              "layered.spacing.nodeNodeBetweenLayers": "150",
+              padding: "[40, 40, 40, 40]",
+              edgeRouting: "SPLINES",
+              "layered.nodePlacement.strategy": "BRANDES_KOEPF",
+            },
+      children: elkNodes,
+      edges: elkEdges,
+    };
 
-    // Find nodes with no incoming edges (roots)
-    const hasIncomingEdge = new Set<string>();
-    edges.forEach((edge) => {
-      if (edge.target) {
-        hasIncomingEdge.add(edge.target);
-      }
-    });
+    try {
+      // Apply the ELK layout
+      const layoutResult = await elk.layout(elkGraph);
 
-    // Calculate earliest times using forward pass
-    let changed = true;
-    let iterations = 0;
-    const maxIterations = nodes.length * 2; // Prevent infinite loops
+      // Extract the positioned nodes from the result
+      if (layoutResult.children) {
+        const positionedNodes = nodes.map((node) => {
+          const elkNode = layoutResult.children?.find((n) => n.id === node.id);
 
-    while (changed && iterations < maxIterations) {
-      changed = false;
-      iterations++;
+          if (elkNode && elkNode.x !== undefined && elkNode.y !== undefined) {
+            return {
+              ...node,
+              position: {
+                x: elkNode.x,
+                y: elkNode.y,
+              },
+            };
+          }
+          return node;
+        });
 
-      edges.forEach((edge) => {
-        if (!edge.source || !edge.target) return;
+        // Update the nodes with new positions
+        setNodes(() => positionedNodes);
 
-        const sourceTime = nodeTimings.get(edge.source)?.earliest || 0;
-        const duration = (edge.data?.duration as number) ?? 0;
-        const targetTime = nodeTimings.get(edge.target)?.earliest || 0;
-
-        if (sourceTime + duration > targetTime) {
-          nodeTimings.set(edge.target, {
-            earliest: sourceTime + duration,
-            level: undefined,
+        // Center the graph
+        setTimeout(() => {
+          reactFlowInstance?.fitView({
+            padding: diagramType === "AOA" ? 0.25 : 0.2,
           });
-          changed = true;
-        }
-      });
+        }, 100);
+      }
+    } catch (error) {
+      console.error("Error applying layout:", error);
     }
-
-    // Group nodes by earliest time for vertical positioning
-    const nodesByEarliest = new Map<number, string[]>();
-
-    // Group nodes by earliest time
-    nodeTimings.forEach((timing, nodeId) => {
-      const earliest = timing.earliest;
-      if (!nodesByEarliest.has(earliest)) {
-        nodesByEarliest.set(earliest, []);
-      }
-      nodesByEarliest.get(earliest)?.push(nodeId);
-    });
-
-    // Sort earliest times
-    const earliestTimes = Array.from(nodesByEarliest.keys()).sort(
-      (a, b) => a - b
-    );
-
-    // Assign levels within each time group
-    earliestTimes.forEach((time) => {
-      const nodesAtTime = nodesByEarliest.get(time) || [];
-
-      // Assign vertical levels to nodes with the same earliest time
-      nodesAtTime.forEach((nodeId, index) => {
-        const timing = nodeTimings.get(nodeId);
-        if (timing) {
-          timing.level = index;
-        }
-      });
-    });
-
-    // Add nodes to dagre graph with calculated positions
-    nodes.forEach((node) => {
-      const timing = nodeTimings.get(node.id);
-      const rank = timing?.earliest || 0;
-      const level = timing?.level || 0;
-
-      g.setNode(node.id, {
-        width: 150,
-        height: 80,
-        rank,
-        level,
-      });
-    });
-
-    // Add edges to dagre graph
-    edges.forEach((edge) => {
-      if (edge.source && edge.target) {
-        g.setEdge(edge.source, edge.target);
-      }
-    });
-
-    // Run the layout algorithm
-    dagre.layout(g);
-
-    // Update node positions based on dagre calculations
-    const updatedNodes = nodes.map((node) => {
-      const nodeWithPosition = g.node(node.id);
-
-      return {
-        ...node,
-        position: {
-          x: nodeWithPosition.x - 75, // Adjust by half node width
-          y: nodeWithPosition.y - 40, // Adjust by half node height
-        },
-      };
-    });
-
-    // Update the nodes with new positions
-    setNodes(() => updatedNodes);
-
-    // Center the graph after layout
-    setTimeout(() => {
-      reactFlowInstance?.fitView({ padding: 0.2 });
-    }, 50);
-  }, [diagramType, edges, nodes, reactFlowInstance, setNodes]);
+  }, [nodes, edges, diagramType, reactFlowInstance, setNodes]);
 
   return {
     autoLayoutDiagram,
