@@ -117,8 +117,17 @@ export function CustomEdge({
   const label = formatLabel();
 
   return (
-    <div className="edge-wrapper">
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
+    <>
+      <BaseEdge
+        path={edgePath}
+        markerEnd={markerEnd}
+        style={{
+          ...style,
+          stroke:
+            style?.stroke || (data?.hasCoDependency ? "#6366f1" : "#94a3b8"),
+          strokeWidth: style?.strokeWidth || 2,
+        }}
+      />
       {shouldRenderLabel() && label && (
         <EdgeLabelRenderer>
           <div
@@ -139,6 +148,6 @@ export function CustomEdge({
           </div>
         </EdgeLabelRenderer>
       )}
-    </div>
+    </>
   );
 }
