@@ -194,6 +194,7 @@ function DiagramCanvasContent({
   // Use the keyboard shortcuts hook
   const { handleKeyDown } = useKeyboardShortcuts({
     setMode,
+    mode,
     autoLayoutDiagram,
     currentZoom,
     handleZoom: (zoom: number) => {

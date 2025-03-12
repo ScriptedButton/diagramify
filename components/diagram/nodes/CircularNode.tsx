@@ -318,6 +318,7 @@ export function CircularNode({
     <div>
       {/* Handles in all directions for maximum flexibility in connecting */}
       <Handle
+        id="right"
         type="source"
         position={Position.Right}
         className={cn(
@@ -326,9 +327,10 @@ export function CircularNode({
           mode === "connect" && "opacity-100 cursor-crosshair shadow-md"
         )}
         style={{ right: -6, top: "50%" }}
-        isConnectable={isConnectable}
+        isConnectable={isConnectable && mode === "connect"}
       />
       <Handle
+        id="left"
         type="target"
         position={Position.Left}
         className={cn(
@@ -337,9 +339,10 @@ export function CircularNode({
           mode === "connect" && "opacity-100 cursor-crosshair shadow-md"
         )}
         style={{ left: -6, top: "50%" }}
-        isConnectable={isConnectable}
+        isConnectable={isConnectable && mode === "connect"}
       />
       <Handle
+        id="bottom"
         type="source"
         position={Position.Bottom}
         className={cn(
@@ -348,9 +351,10 @@ export function CircularNode({
           mode === "connect" && "opacity-100 cursor-crosshair shadow-md"
         )}
         style={{ bottom: -6, left: "50%" }}
-        isConnectable={isConnectable}
+        isConnectable={isConnectable && mode === "connect"}
       />
       <Handle
+        id="top"
         type="target"
         position={Position.Top}
         className={cn(
@@ -359,7 +363,7 @@ export function CircularNode({
           mode === "connect" && "opacity-100 cursor-crosshair shadow-md"
         )}
         style={{ top: -6, left: "50%" }}
-        isConnectable={isConnectable}
+        isConnectable={isConnectable && mode === "connect"}
       />
 
       <ContextMenu>

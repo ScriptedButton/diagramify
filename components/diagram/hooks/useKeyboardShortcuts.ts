@@ -1,8 +1,9 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { DiagramMode } from "../types";
 
 interface UseKeyboardShortcutsProps {
   setMode: (mode: DiagramMode) => void;
+  mode: DiagramMode;
   autoLayoutDiagram?: () => void;
   currentZoom: number;
   handleZoom: (zoom: number) => void;
@@ -19,6 +20,7 @@ interface UseKeyboardShortcutsProps {
 
 export function useKeyboardShortcuts({
   setMode,
+  mode,
   autoLayoutDiagram,
   currentZoom,
   handleZoom,
@@ -32,6 +34,15 @@ export function useKeyboardShortcuts({
   exportDiagram,
   handleNewDiagram,
 }: UseKeyboardShortcutsProps) {
+  const [previousMode, setPreviousMode] = useState<DiagramMode>(mode);
+  const [isPanning, setIsPanning] = useState(false);
+
+  useEffect(() => {
+    if (!isPanning) {
+      setPreviousMode(mode);
+    }
+  }, [mode, isPanning]);
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (
@@ -88,7 +99,10 @@ export function useKeyboardShortcuts({
             autoLayoutDiagram?.();
             break;
           case " ":
-            setMode("drag");
+            if (!event.repeat && !isPanning) {
+              setIsPanning(true);
+              setMode("drag");
+            }
             break;
         }
       }
@@ -138,13 +152,28 @@ export function useKeyboardShortcuts({
       loadDiagram,
       exportDiagram,
       handleNewDiagram,
+      isPanning,
     ]
+  );
+
+  const handleKeyUp = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === " " && isPanning) {
+        setIsPanning(false);
+        setMode(previousMode);
+      }
+    },
+    [isPanning, previousMode, setMode]
   );
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [handleKeyDown, handleKeyUp]);
 
   return { handleKeyDown };
 }

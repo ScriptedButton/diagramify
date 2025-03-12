@@ -7,6 +7,8 @@ import {
   BackgroundVariant,
   SelectionMode,
   useReactFlow,
+  useNodes,
+  useEdges,
   type Node,
   type Edge,
   type NodeChange,
@@ -46,6 +48,30 @@ export const DiagramContent = memo(function DiagramContent({
   onAddNode,
 }: DiagramContentProps) {
   const { screenToFlowPosition } = useReactFlow();
+  const currentNodes = useNodes();
+  const currentEdges = useEdges();
+
+  const handleDelete = () => {
+    if (mode === "delete") {
+      // Get selected nodes and edges
+      const selectedNodes = currentNodes.filter((node) => node.selected);
+      const selectedEdges = currentEdges.filter((edge) => edge.selected);
+
+      // Delete selected edges
+      if (selectedEdges.length > 0) {
+        const edgeChanges: EdgeChange[] = selectedEdges.map((edge: Edge) => ({
+          type: "remove",
+          id: edge.id,
+        }));
+        onEdgesChange(edgeChanges);
+      }
+
+      // Delete selected nodes
+      if (selectedNodes.length > 0) {
+        selectedNodes.forEach((node: Node) => onNodeDelete(node.id));
+      }
+    }
+  };
 
   return (
     <ReactFlow
@@ -69,18 +95,67 @@ export const DiagramContent = memo(function DiagramContent({
       }}
       nodesDraggable={mode !== "delete"}
       nodesConnectable={mode !== "delete"}
-      elementsSelectable={mode !== "delete"}
+      elementsSelectable={
+        mode === "select" ||
+        mode === "delete" ||
+        mode === "connect" ||
+        mode === "add"
+      }
       panOnDrag={mode !== "add"}
       zoomOnScroll
       zoomOnPinch
-      selectionMode={SelectionMode.Partial}
+      selectionMode={SelectionMode.Full}
+      selectionOnDrag={mode === "select" || mode === "delete"}
+      selectNodesOnDrag={mode === "select" || mode === "delete"}
       snapToGrid
       snapGrid={[10, 10]}
       className="w-full h-full bg-gradient-to-br from-background to-muted/50"
       proOptions={{ hideAttribution: true }}
-      onNodeClick={(_, node) => {
+      onConnectStart={(_, params) => {
+        console.log("Connection started from:", params);
+      }}
+      onConnectEnd={() => {
+        console.log("Connection ended");
+      }}
+      isValidConnection={(connection) => {
+        // Only allow connections in connect mode
+        if (mode !== "connect") return false;
+
+        // Ensure we have both source and target
+        if (!connection.source || !connection.target) return false;
+
+        // Don't allow self-connections
+        if (connection.source === connection.target) return false;
+
+        // Ensure we're using the correct handle types
+        const sourceHandleId = connection.sourceHandle;
+        const targetHandleId = connection.targetHandle;
+
+        // Validate handle types
+        if (!sourceHandleId || !targetHandleId) return false;
+
+        // Only allow connections from source handles to target handles
+        const isSourceValid = ["right", "bottom"].includes(sourceHandleId);
+        const isTargetValid = ["left", "top"].includes(targetHandleId);
+
+        return isSourceValid && isTargetValid;
+      }}
+      onNodeClick={() => {
         if (mode === "delete") {
-          onNodeDelete(node.id);
+          handleDelete();
+        }
+      }}
+      onEdgeClick={() => {
+        if (mode === "delete") {
+          handleDelete();
+        }
+      }}
+      onKeyDown={(event) => {
+        if (
+          mode === "delete" &&
+          (event.key === "Delete" || event.key === "Backspace")
+        ) {
+          handleDelete();
         }
       }}
       onPaneClick={(event: React.MouseEvent) => {
