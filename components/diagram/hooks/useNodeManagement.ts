@@ -35,12 +35,17 @@ export function useNodeManagement({
             : 200,
         });
 
+      // Count only non-Start/End nodes for event numbering
+      const regularNodeCount = nodes.filter(
+        (node) => !node.data.isStartEvent && !node.data.isEndEvent
+      ).length;
+
       const newNode: CustomNode = {
         id,
         position: newNodePosition,
         type: "circularNode",
         data: {
-          eventNumber: nodes.length + 1,
+          eventNumber: regularNodeCount + 1,
           earliest: 0,
           latest: 0,
           mode,
@@ -50,7 +55,7 @@ export function useNodeManagement({
 
       setNodes((nds) => [...nds, newNode]);
     },
-    [reactFlowInstance, nodes.length, mode, setNodes, reactFlowWrapper]
+    [reactFlowInstance, nodes, mode, setNodes, reactFlowWrapper]
   );
 
   const addStartNode = useCallback(() => {
@@ -115,6 +120,11 @@ export function useNodeManagement({
       return;
     }
 
+    // Count only non-Start/End nodes for event numbering
+    const regularNodeCount = nodes.filter(
+      (node) => !node.data.isStartEvent && !node.data.isEndEvent
+    ).length;
+
     const id = `node_end_${Date.now()}`;
     const newNodePosition = reactFlowInstance.screenToFlowPosition({
       x: reactFlowWrapper.current?.clientWidth
@@ -130,7 +140,7 @@ export function useNodeManagement({
       position: newNodePosition,
       type: "circularNode",
       data: {
-        eventNumber: nodes.length + 1,
+        eventNumber: regularNodeCount + 2,
         earliest: 0,
         latest: 0,
         mode,

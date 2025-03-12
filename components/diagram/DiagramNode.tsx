@@ -61,7 +61,7 @@ export function DiagramNode({
   const handleSelect = (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    if (mode === "delete" && onDelete) {
+    if (mode === "delete" && onDelete && node.id) {
       onDelete(node.id);
       return;
     }
@@ -156,33 +156,43 @@ export function DiagramNode({
 
                 <div className="mt-2 text-xs grid grid-cols-2 gap-x-2 gap-y-1">
                   <div className="text-muted-foreground">Duration:</div>
-                  <div className="text-right">{node.duration}</div>
+                  <div className="text-right">
+                    {String(node.duration ?? "")}
+                  </div>
 
                   {node.earliestStart !== undefined && (
                     <>
                       <div className="text-muted-foreground">ES:</div>
-                      <div className="text-right">{node.earliestStart}</div>
+                      <div className="text-right">
+                        {String(node.earliestStart)}
+                      </div>
                     </>
                   )}
 
                   {node.earliestFinish !== undefined && (
                     <>
                       <div className="text-muted-foreground">EF:</div>
-                      <div className="text-right">{node.earliestFinish}</div>
+                      <div className="text-right">
+                        {String(node.earliestFinish)}
+                      </div>
                     </>
                   )}
 
                   {node.latestStart !== undefined && (
                     <>
                       <div className="text-muted-foreground">LS:</div>
-                      <div className="text-right">{node.latestStart}</div>
+                      <div className="text-right">
+                        {String(node.latestStart)}
+                      </div>
                     </>
                   )}
 
                   {node.latestFinish !== undefined && (
                     <>
                       <div className="text-muted-foreground">LF:</div>
-                      <div className="text-right">{node.latestFinish}</div>
+                      <div className="text-right">
+                        {String(node.latestFinish)}
+                      </div>
                     </>
                   )}
 
@@ -195,7 +205,7 @@ export function DiagramNode({
                           node.slack === 0 ? "text-red-500 font-medium" : ""
                         )}
                       >
-                        {node.slack}
+                        {String(node.slack)}
                       </div>
                     </>
                   )}

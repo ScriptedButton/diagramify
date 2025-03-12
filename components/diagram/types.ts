@@ -17,26 +17,29 @@ export interface EdgeData extends Record<string, unknown> {
   hasCoDependency?: boolean;
   dependsOn?: string[];
   edgeType?: string;
+  weight?: number;
   [key: string]: unknown;
 }
 
 export interface NodeData extends Record<string, unknown> {
-  label?: string;
-  activityId?: string;
-  duration?: number;
+  id?: string;
+  eventNumber?: number;
   earliest?: number;
   latest?: number;
-  isStartNode?: boolean;
-  isEndNode?: boolean;
+  mode?: DiagramMode;
+  duration?: number;
   isStartEvent?: boolean;
   isEndEvent?: boolean;
-  isDummyMergePoint?: boolean;
-  facilitatesActivity?: string;
-  eventNumber?: number;
-  mode?: DiagramMode;
-  style?: React.CSSProperties;
-  isCritical?: boolean;
-  advancedMode?: boolean;
+  isStartNode?: boolean;
+  isEndNode?: boolean;
+  label?: string;
+  style?: {
+    backgroundColor: string;
+    color: string;
+    borderColor: string;
+  };
+  x?: number;
+  y?: number;
   [key: string]: unknown;
 }
 

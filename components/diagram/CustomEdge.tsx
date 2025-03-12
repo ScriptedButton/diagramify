@@ -75,26 +75,25 @@ export function CustomEdge({
 
   // Format the label based on the data
   const formatLabel = () => {
-    if (!data) return "";
+    if (!data) return null;
 
     const { activityId, duration, isCritical, hasCoDependency, advancedMode } =
       data;
 
-    if (activityId && duration !== undefined) {
-      // Decide which format to use based on advancedMode
+    if (activityId && typeof duration === "number") {
+      const earlyStart =
+        typeof data.earlyStart === "number" ? data.earlyStart : 0;
       const labelText = !advancedMode
         ? `${activityId}(${duration})`
-        : `${activityId}(ES:${data.earlyStart || 0},EF:${
-            (data.earlyStart || 0) + duration
-          })`;
+        : `${activityId}(ES:${earlyStart},EF:${earlyStart + duration})`;
 
       return (
         <div className="flex items-center">
           <div
             className={cn(
               "font-bold",
-              isCritical && "text-red-600",
-              hasCoDependency && "text-indigo-600"
+              isCritical ? "text-red-600" : "",
+              hasCoDependency ? "text-indigo-600" : ""
             )}
           >
             {labelText}
@@ -102,25 +101,25 @@ export function CustomEdge({
         </div>
       );
     }
-    return "";
+    return null;
   };
 
   // Check if we should render the label
   const shouldRenderLabel = () => {
-    // Only render if data exists and either:
-    // 1. data.label exists, or
-    // 2. activityId and duration exist (for formatted labels)
+    if (!data) return false;
+
     return (
-      data &&
-      ((data.label && data.label.length > 0) ||
-        (data.activityId && data.duration !== undefined))
+      (typeof data.label === "string" && data.label.length > 0) ||
+      (typeof data.activityId === "string" && typeof data.duration === "number")
     );
   };
 
+  const label = formatLabel();
+
   return (
-    <>
+    <div className="edge-wrapper">
       <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
-      {shouldRenderLabel() && (
+      {shouldRenderLabel() && label && (
         <EdgeLabelRenderer>
           <div
             style={{
@@ -136,10 +135,10 @@ export function CustomEdge({
             )}
             onClick={onEdgeClick}
           >
-            {formatLabel()}
+            {label}
           </div>
         </EdgeLabelRenderer>
       )}
-    </>
+    </div>
   );
 }

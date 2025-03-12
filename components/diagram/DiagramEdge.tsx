@@ -23,13 +23,13 @@ export function DiagramEdge({ edge, nodes }: DiagramEdgeProps) {
   const nodeHeight = 120; // Approximate height of the node card
 
   const start: Point = {
-    x: sourceNode.x + nodeWidth / 2,
-    y: sourceNode.y + nodeHeight / 2,
+    x: (sourceNode.x ?? 0) + nodeWidth / 2,
+    y: (sourceNode.y ?? 0) + nodeHeight / 2,
   };
 
   const end: Point = {
-    x: targetNode.x + nodeWidth / 2,
-    y: targetNode.y + nodeHeight / 2,
+    x: (targetNode.x ?? 0) + nodeWidth / 2,
+    y: (targetNode.y ?? 0) + nodeHeight / 2,
   };
 
   // Calculate control points for the curved line
@@ -105,7 +105,7 @@ export function DiagramEdge({ edge, nodes }: DiagramEdgeProps) {
       )}
 
       {/* Weight (if applicable) */}
-      {edge.weight !== undefined && (
+      {typeof edge.weight === "number" && (
         <motion.div
           className="absolute px-2 py-1 text-xs font-semibold bg-primary/10 text-primary rounded-full"
           style={{

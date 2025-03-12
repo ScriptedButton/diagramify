@@ -117,16 +117,6 @@ export function CircularNode({
             >
               {nodeData.label || (nodeData.isStartEvent ? "Start" : "End")}
             </div>
-            <div
-              className="text-[10px] font-medium"
-              style={
-                nodeData.style?.color
-                  ? { color: nodeData.style.color }
-                  : undefined
-              }
-            >
-              Event {nodeData.eventNumber}
-            </div>
           </div>
         </div>
       );
@@ -140,7 +130,7 @@ export function CircularNode({
             baseClasses,
             "w-24 h-24 rounded-full",
             "border-2",
-            nodeData.isCritical && "critical-node"
+            nodeData.isCritical ? "critical-node" : ""
           )}
         >
           <div className="flex flex-col items-center justify-center w-full h-full">
@@ -288,7 +278,7 @@ export function CircularNode({
           baseClasses,
           "w-24 h-24 rounded-full",
           "border-2",
-          nodeData.isCritical && "critical-node"
+          nodeData.isCritical ? "critical-node" : ""
         )}
         style={
           nodeData.isStartEvent || nodeData.isEndEvent ? customStyle : undefined
