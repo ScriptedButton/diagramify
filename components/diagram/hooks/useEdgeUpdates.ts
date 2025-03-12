@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { updateLinkedCoDependencies } from "@/lib/dependencies";
 import { EdgeData, CustomEdge } from "../types";
+import { Connection, Edge, reconnectEdge } from "@xyflow/react";
 
 interface UseEdgeUpdatesProps {
   diagramType: "AOA" | "AON";
@@ -102,7 +103,14 @@ export function useEdgeUpdates({
     [diagramType, advancedMode, setEdges]
   );
 
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) =>
+      setEdges((els) => reconnectEdge(oldEdge, newConnection, els)),
+    [setEdges]
+  );
+
   return {
     updateEdgeData,
+    onReconnect,
   };
 }

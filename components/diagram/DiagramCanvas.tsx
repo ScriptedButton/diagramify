@@ -432,6 +432,12 @@ function DiagramCanvasContent({
     mode,
   });
 
+  const { onReconnect } = useEdgeUpdates({
+    diagramType,
+    advancedMode: false,
+    edgeStyle: "bezier",
+    setEdges: setEdges,
+  });
   return (
     <div className={cn("flex flex-col h-full relative", className)}>
       <DiagramToolbar
@@ -503,6 +509,7 @@ function DiagramCanvasContent({
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onReconnect={onReconnect}
           onInit={onInit}
           mode={mode}
           diagramType={diagramType}

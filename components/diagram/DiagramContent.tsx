@@ -21,7 +21,6 @@ import { DiagramMode } from "./types";
 import { NODE_TYPES } from "./utils/NodeTypes";
 import { EDGE_TYPES } from "./utils/EdgeTypes";
 import { ConnectionLine } from "./ConnectionLine";
-
 interface DiagramContentProps {
   nodes: Node[];
   edges: Edge[];
@@ -33,6 +32,7 @@ interface DiagramContentProps {
   diagramType: "AOA" | "AON";
   onNodeDelete: (nodeId: string) => void;
   onAddNode: (position?: { x: number; y: number }) => void;
+  onReconnect: (oldEdge: Edge, newConnection: Connection) => void;
 }
 
 export const DiagramContent = memo(function DiagramContent({
@@ -46,6 +46,7 @@ export const DiagramContent = memo(function DiagramContent({
   diagramType,
   onNodeDelete,
   onAddNode,
+  onReconnect,
 }: DiagramContentProps) {
   const { screenToFlowPosition } = useReactFlow();
   const currentNodes = useNodes();
@@ -81,6 +82,13 @@ export const DiagramContent = memo(function DiagramContent({
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       onInit={onInit}
+      onReconnect={onReconnect}
+      onConnectStart={(_, params) => {
+        console.log("Connection started from:", params);
+      }}
+      onConnectEnd={() => {
+        console.log("Connection ended");
+      }}
       nodeTypes={NODE_TYPES}
       edgeTypes={EDGE_TYPES}
       minZoom={0.1}
@@ -107,16 +115,11 @@ export const DiagramContent = memo(function DiagramContent({
       selectionMode={SelectionMode.Full}
       selectionOnDrag={mode === "select" || mode === "delete"}
       selectNodesOnDrag={mode === "select" || mode === "delete"}
+      edgesReconnectable={mode === "connect"}
       snapToGrid
       snapGrid={[10, 10]}
       className="w-full h-full bg-gradient-to-br from-background to-muted/50"
       proOptions={{ hideAttribution: true }}
-      onConnectStart={(_, params) => {
-        console.log("Connection started from:", params);
-      }}
-      onConnectEnd={() => {
-        console.log("Connection ended");
-      }}
       isValidConnection={(connection) => {
         // Only allow connections in connect mode
         if (mode !== "connect") return false;
