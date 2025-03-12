@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Handle, Position, NodeProps } from "reactflow";
+import { Handle, Position, useReactFlow } from "@xyflow/react";
 import { motion } from "motion/react";
-import { DiagramMode, NodeShape } from "../types";
+import { NodeData, CustomNodeProps } from "../types";
 import { cn } from "@/lib/utils";
 import {
   ContextMenu,
@@ -13,42 +13,30 @@ import {
   ContextMenuSeparator,
 } from "@/components/ui/context-menu";
 
-type CircularNodeData = {
-  eventNumber: number;
-  earliest: number;
-  latest: number;
-  isCritical?: boolean;
-  mode: DiagramMode;
-  shape?: NodeShape;
-  isStartEvent?: boolean;
-  isEndEvent?: boolean;
-  label?: string;
-  simpleMode?: boolean;
-  style?: {
-    backgroundColor?: string;
-    color?: string;
-    borderColor?: string;
-  };
-};
-
-interface ExtendedNodeProps extends NodeProps<CircularNodeData> {
-  updateNodeData?: (newData: CircularNodeData) => void;
-}
-
 export function CircularNode({
+  id,
   data,
   selected,
   isConnectable,
-  updateNodeData,
-}: ExtendedNodeProps) {
+}: CustomNodeProps) {
+  const { setNodes } = useReactFlow();
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const mode = data.mode || "select";
-  const isCritical = data.isCritical || false;
+  const nodeData = data as NodeData;
+  const mode = nodeData.mode || "select";
+  const isCritical = nodeData.isCritical || false;
+  const eventNumber = nodeData.eventNumber ?? 0;
+
+  const updateNodeData = (newData: Partial<NodeData>) => {
+    setNodes((nodes) =>
+      nodes.map((node) =>
+        node.id === id ? { ...node, data: { ...node.data, ...newData } } : node
+      )
+    );
+  };
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only allow numbers
     const value = e.target.value.replace(/[^0-9]/g, "");
     setEditValue(value);
   };
@@ -70,24 +58,20 @@ export function CircularNode({
       editValue.trim() !== "" ? parseInt(editValue.trim(), 10) : 0;
 
     if (isEditing === "eventNumber") {
-      updateNodeData?.({
-        ...data,
-        eventNumber: newValue,
-      });
+      updateNodeData({ eventNumber: newValue });
     } else if (isEditing === "earliest") {
-      updateNodeData?.({
-        ...data,
-        earliest: newValue,
-      });
+      updateNodeData({ earliest: newValue });
     } else if (isEditing === "latest") {
-      updateNodeData?.({
-        ...data,
-        latest: newValue,
-      });
+      updateNodeData({ latest: newValue });
     }
 
     setIsEditing(null);
   };
+
+  // Float/Slack calculation
+  const latest = nodeData.latest ?? 0;
+  const earliest = nodeData.earliest ?? 0;
+  const slack = latest - earliest;
 
   // Render different node shapes
   const renderShapedNode = () => {
@@ -96,27 +80,27 @@ export function CircularNode({
       "flex items-center justify-center",
       "transition-all duration-200",
       "shadow-lg",
-      !data.isStartEvent && !data.isEndEvent && data.isCritical
+      !nodeData.isStartEvent && !nodeData.isEndEvent && nodeData.isCritical
         ? "border-red-500 dark:border-red-500 border-2 bg-red-50 dark:bg-red-950/30"
         : "border-primary border bg-background",
       selected
         ? "ring-2 ring-blue-500 ring-opacity-80"
         : "hover:ring-1 hover:ring-blue-400 hover:ring-opacity-50",
-      data.mode === "delete" &&
+      mode === "delete" &&
         "opacity-70 hover:opacity-100 hover:border-destructive"
     );
 
     // Get custom styling
-    const customStyle = data.style
+    const customStyle = nodeData.style
       ? {
-          backgroundColor: data.style.backgroundColor,
-          borderColor: data.style.borderColor,
-          color: data.style.color,
+          backgroundColor: nodeData.style.backgroundColor,
+          borderColor: nodeData.style.borderColor,
+          color: nodeData.style.color,
         }
       : undefined;
 
     // Special content for Start/End nodes
-    if (data.isStartEvent || data.isEndEvent) {
+    if (nodeData.isStartEvent || nodeData.isEndEvent) {
       return (
         <div
           className={cn(baseClasses, "w-24 h-24 rounded-full", "border-2")}
@@ -126,18 +110,22 @@ export function CircularNode({
             <div
               className="font-bold text-xl mb-1"
               style={
-                data.style?.color ? { color: data.style.color } : undefined
+                nodeData.style?.color
+                  ? { color: nodeData.style.color }
+                  : undefined
               }
             >
-              {data.label || (data.isStartEvent ? "Start" : "End")}
+              {nodeData.label || (nodeData.isStartEvent ? "Start" : "End")}
             </div>
             <div
               className="text-[10px] font-medium"
               style={
-                data.style?.color ? { color: data.style.color } : undefined
+                nodeData.style?.color
+                  ? { color: nodeData.style.color }
+                  : undefined
               }
             >
-              Event {data.eventNumber}
+              Event {nodeData.eventNumber}
             </div>
           </div>
         </div>
@@ -145,21 +133,21 @@ export function CircularNode({
     }
 
     // Simple mode just shows the event number
-    if (data.simpleMode) {
+    if (!nodeData.advancedMode) {
       return (
         <div
           className={cn(
             baseClasses,
             "w-24 h-24 rounded-full",
             "border-2",
-            data.isCritical && "critical-node"
+            nodeData.isCritical && "critical-node"
           )}
         >
           <div className="flex flex-col items-center justify-center w-full h-full">
             <div
               className="font-bold text-3xl"
               onDoubleClick={() =>
-                handleStartEditing("eventNumber", data.eventNumber)
+                handleStartEditing("eventNumber", nodeData.eventNumber)
               }
             >
               {isEditing === "eventNumber" ? (
@@ -173,7 +161,7 @@ export function CircularNode({
                   autoFocus
                 />
               ) : (
-                data.eventNumber
+                nodeData.eventNumber
               )}
             </div>
           </div>
@@ -188,7 +176,7 @@ export function CircularNode({
         <div
           className="font-bold text-2xl mb-0.5 text-primary"
           onDoubleClick={() =>
-            handleStartEditing("eventNumber", data.eventNumber)
+            handleStartEditing("eventNumber", nodeData.eventNumber)
           }
         >
           {isEditing === "eventNumber" ? (
@@ -202,7 +190,7 @@ export function CircularNode({
               autoFocus
             />
           ) : (
-            data.eventNumber
+            nodeData.eventNumber
           )}
         </div>
 
@@ -211,7 +199,9 @@ export function CircularNode({
           {/* Early time */}
           <div
             className="flex items-center justify-center w-14 gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20"
-            onDoubleClick={() => handleStartEditing("earliest", data.earliest)}
+            onDoubleClick={() =>
+              handleStartEditing("earliest", nodeData.earliest)
+            }
           >
             <span className="font-medium text-blue-600 dark:text-blue-400">
               E:
@@ -227,7 +217,7 @@ export function CircularNode({
               />
             ) : (
               <span className="text-blue-700 dark:text-blue-300">
-                {data.earliest}
+                {nodeData.earliest}
               </span>
             )}
           </div>
@@ -235,7 +225,7 @@ export function CircularNode({
           {/* Late time */}
           <div
             className="flex items-center justify-center w-14 gap-1 px-1.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/20"
-            onDoubleClick={() => handleStartEditing("latest", data.latest)}
+            onDoubleClick={() => handleStartEditing("latest", nodeData.latest)}
           >
             <span className="font-medium text-purple-600 dark:text-purple-400">
               L:
@@ -251,17 +241,17 @@ export function CircularNode({
               />
             ) : (
               <span className="text-purple-700 dark:text-purple-300">
-                {data.latest}
+                {nodeData.latest}
               </span>
             )}
           </div>
 
           {/* Float/Slack (if needed) */}
-          {data.latest - data.earliest >= 0 && (
+          {slack >= 0 && (
             <div
               className={cn(
                 "flex items-center justify-center w-14 gap-1 px-1.5 py-0.5 rounded-full",
-                data.latest - data.earliest === 0
+                slack === 0
                   ? "bg-red-50 dark:bg-red-900/30"
                   : "bg-green-50 dark:bg-green-900/20"
               )}
@@ -269,21 +259,21 @@ export function CircularNode({
               <span
                 className={cn(
                   "font-medium",
-                  data.latest - data.earliest === 0
+                  slack === 0
                     ? "text-red-600 dark:text-red-400"
                     : "text-green-600 dark:text-green-400"
                 )}
               >
-                S:
+                F:
               </span>
               <span
                 className={cn(
-                  data.latest - data.earliest === 0
+                  slack === 0
                     ? "text-red-700 dark:text-red-300 font-medium"
                     : "text-green-700 dark:text-green-300"
                 )}
               >
-                {data.latest - data.earliest}
+                {slack}
               </span>
             </div>
           )}
@@ -298,13 +288,30 @@ export function CircularNode({
           baseClasses,
           "w-24 h-24 rounded-full",
           "border-2",
-          data.isCritical && "critical-node"
+          nodeData.isCritical && "critical-node"
         )}
-        style={data.isStartEvent || data.isEndEvent ? customStyle : undefined}
+        style={
+          nodeData.isStartEvent || nodeData.isEndEvent ? customStyle : undefined
+        }
       >
         {nodeContent}
       </div>
     );
+  };
+
+  const handleEventNumberChange = () => {
+    const newNumber = window.prompt(
+      "Enter new event number:",
+      eventNumber.toString()
+    );
+    if (newNumber !== null) {
+      const num = parseInt(newNumber, 10);
+      if (!isNaN(num) && num > 0) {
+        updateNodeData({
+          eventNumber: num,
+        });
+      }
+    }
   };
 
   return (
@@ -370,41 +377,23 @@ export function CircularNode({
         <ContextMenuContent>
           <ContextMenuItem
             onSelect={() =>
-              updateNodeData?.({
-                ...data,
+              updateNodeData({
                 isCritical: !isCritical,
               })
             }
           >
             {isCritical ? "Mark as Non-Critical" : "Mark as Critical"}
           </ContextMenuItem>
-          <ContextMenuItem
-            onSelect={() => {
-              const newNumber = window.prompt(
-                "Enter new event number:",
-                data.eventNumber.toString()
-              );
-              if (newNumber !== null) {
-                const num = parseInt(newNumber, 10);
-                if (!isNaN(num) && num > 0) {
-                  updateNodeData?.({
-                    ...data,
-                    eventNumber: num,
-                  });
-                }
-              }
-            }}
-          >
+          <ContextMenuItem onSelect={handleEventNumberChange}>
             Change Event Number
           </ContextMenuItem>
 
           <ContextMenuSeparator />
 
           <ContextMenuItem
-            disabled={data.isStartEvent}
+            disabled={nodeData.isStartEvent}
             onSelect={() =>
-              updateNodeData?.({
-                ...data,
+              updateNodeData({
                 isStartEvent: true,
                 isEndEvent: false,
                 style: {
@@ -420,10 +409,9 @@ export function CircularNode({
           </ContextMenuItem>
 
           <ContextMenuItem
-            disabled={data.isEndEvent}
+            disabled={nodeData.isEndEvent}
             onSelect={() =>
-              updateNodeData?.({
-                ...data,
+              updateNodeData({
                 isEndEvent: true,
                 isStartEvent: false,
                 style: {
@@ -438,11 +426,10 @@ export function CircularNode({
             Mark as End Node
           </ContextMenuItem>
 
-          {(data.isStartEvent || data.isEndEvent) && (
+          {(nodeData.isStartEvent || nodeData.isEndEvent) && (
             <ContextMenuItem
               onSelect={() =>
-                updateNodeData?.({
-                  ...data,
+                updateNodeData({
                   isStartEvent: false,
                   isEndEvent: false,
                   style: undefined,

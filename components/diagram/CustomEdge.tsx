@@ -1,14 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import {
   EdgeProps,
   EdgeLabelRenderer,
   BaseEdge,
   getBezierPath,
-} from "reactflow";
+} from "@xyflow/react";
 import { cn } from "@/lib/utils";
-import { PencilIcon, InfoIcon, LinkIcon } from "lucide-react";
 
 export function CustomEdge({
   id,
@@ -19,12 +18,9 @@ export function CustomEdge({
   sourcePosition,
   targetPosition,
   data,
-  style = {},
   markerEnd,
+  style,
 }: EdgeProps) {
-  const [showDetails, setShowDetails] = useState(false);
-
-  // Use getBezierPath instead of getSmoothStepPath for better curve separation
   // Calculate a unique curvature based on the edge ID to prevent overlapping
   const edgeIdNumber = parseInt(id.replace(/\D/g, ""), 10);
   const baseCurvature = 0.35;
@@ -32,7 +28,10 @@ export function CustomEdge({
     ? baseCurvature
     : baseCurvature + (edgeIdNumber % 10) * 0.03;
 
-  const [edgePath, labelX, labelY] = getBezierPath({
+  // Decide which path function to use based on the type
+  let edgePath, labelX, labelY;
+
+  const defaultParams = {
     sourceX,
     sourceY,
     sourcePosition,
@@ -40,7 +39,26 @@ export function CustomEdge({
     targetY,
     targetPosition,
     curvature: uniqueCurvature,
-  });
+  };
+
+  // Generate the path based on the type stored in data
+  if (data?.edgeType === "straight") {
+    // For straight edges, draw a direct line
+    edgePath = `M${sourceX},${sourceY} L${targetX},${targetY}`;
+    // Position the label at the middle of the line
+    labelX = (sourceX + targetX) / 2;
+    labelY = (sourceY + targetY) / 2;
+  } else if (data?.edgeType === "step") {
+    // For step edges (right angles), calculate a path with right angles
+    const midX = (sourceX + targetX) / 2;
+    edgePath = `M${sourceX},${sourceY} L${midX},${sourceY} L${midX},${targetY} L${targetX},${targetY}`;
+    // Position the label in the middle segment
+    labelX = midX;
+    labelY = (sourceY + targetY) / 2;
+  } else {
+    // Default is bezier curve
+    [edgePath, labelX, labelY] = getBezierPath(defaultParams);
+  }
 
   const onEdgeClick = useCallback(() => {
     const newDuration = window.prompt(
@@ -55,106 +73,55 @@ export function CustomEdge({
     }
   }, [id, data]);
 
-  const toggleDetails = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setShowDetails(!showDetails);
-    },
-    [showDetails]
-  );
-
   // Format the label based on the data
   const formatLabel = () => {
     if (!data) return "";
 
-    const {
-      activityId,
-      duration,
-      earlyStart,
-      earlyFinish,
-      lateStart,
-      lateFinish,
-      isCritical,
-      float,
-      hasCoDependency,
-      dependsOn,
-    } = data;
+    const { activityId, duration, isCritical, hasCoDependency, advancedMode } =
+      data;
+
     if (activityId && duration !== undefined) {
+      // Decide which format to use based on advancedMode
+      const labelText = !advancedMode
+        ? `${activityId}(${duration})`
+        : `${activityId}(ES:${data.earlyStart || 0},EF:${
+            (data.earlyStart || 0) + duration
+          })`;
+
       return (
-        <div className="flex flex-col items-center min-w-[80px]">
-          <div className="font-semibold flex items-center gap-1.5">
-            <span>{activityId}</span>
-            {hasCoDependency && !showDetails && (
-              <LinkIcon
-                size={14}
-                className="text-indigo-500 animate-pulse"
-                aria-label="Has co-dependencies"
-              />
+        <div className="flex items-center">
+          <div
+            className={cn(
+              "font-bold",
+              isCritical && "text-red-600",
+              hasCoDependency && "text-indigo-600"
             )}
-            {showDetails && (
-              <span
-                className={cn(
-                  "text-xs px-1.5 py-0.5 rounded",
-                  isCritical
-                    ? "bg-red-100 dark:bg-red-800/30"
-                    : hasCoDependency
-                    ? "bg-indigo-100 dark:bg-indigo-800/30"
-                    : "bg-gray-100 dark:bg-gray-800"
-                )}
-              >
-                {isCritical
-                  ? "Critical"
-                  : hasCoDependency
-                  ? "Co-Dependency"
-                  : `Float: ${float || 0}`}
-              </span>
-            )}
+          >
+            {labelText}
           </div>
-
-          <div className="flex gap-1.5 text-xs mt-0.5">
-            <span className="font-medium">d={duration}</span>
-            {showDetails ? (
-              <>
-                <span>ES={earlyStart}</span>
-                <span>EF={earlyFinish}</span>
-              </>
-            ) : (
-              <span>ES={earlyStart}</span>
-            )}
-          </div>
-
-          {showDetails && dependsOn && dependsOn.length > 0 && (
-            <div className="text-xs mt-1 p-1 bg-indigo-50 dark:bg-indigo-900/20 rounded border border-indigo-100 dark:border-indigo-800">
-              <span className="text-indigo-600 dark:text-indigo-400 font-medium">
-                Depends on:{" "}
-              </span>
-              <span>{dependsOn.join(", ")}</span>
-            </div>
-          )}
-
-          {showDetails &&
-            lateStart !== undefined &&
-            lateFinish !== undefined && (
-              <div className="flex gap-1.5 text-xs mt-0.5">
-                <span>LS={lateStart}</span>
-                <span>LF={lateFinish}</span>
-              </div>
-            )}
         </div>
       );
     }
-    return data.label || "";
+    return "";
   };
 
-  // Determine if this is a critical path edge
-  const isCritical = data?.isCritical || false;
-  const hasCoDependency = data?.hasCoDependency || false;
+  // Check if we should render the label
+  const shouldRenderLabel = () => {
+    // Only render if data exists and either:
+    // 1. data.label exists, or
+    // 2. activityId and duration exist (for formatted labels)
+    return (
+      data &&
+      ((data.label && data.label.length > 0) ||
+        (data.activityId && data.duration !== undefined))
+    );
+  };
 
   return (
     <>
       <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
-      <EdgeLabelRenderer>
-        {data && (
+      {shouldRenderLabel() && (
+        <EdgeLabelRenderer>
           <div
             style={{
               position: "absolute",
@@ -163,48 +130,16 @@ export function CustomEdge({
             }}
             className={cn(
               "bg-white dark:bg-gray-900",
-              "shadow-md",
-              "border border-gray-200 dark:border-gray-800",
               "rounded-md",
               "p-1",
-              "flex items-center gap-2",
-              isCritical
-                ? "border-red-300 dark:border-red-800/50 bg-red-50/80 dark:bg-red-950/50"
-                : hasCoDependency
-                ? "border-indigo-300 dark:border-indigo-800/50 bg-indigo-50/80 dark:bg-indigo-950/50"
-                : ""
+              "flex items-center gap-2"
             )}
             onClick={onEdgeClick}
           >
             {formatLabel()}
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdgeClick();
-                }}
-              >
-                <PencilIcon size={14} />
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300",
-                  "p-1 rounded-full",
-                  "hover:bg-gray-100 dark:hover:bg-gray-800",
-                  showDetails && "bg-gray-100 dark:bg-gray-800"
-                )}
-                onClick={toggleDetails}
-              >
-                <InfoIcon size={14} />
-              </button>
-            </div>
           </div>
-        )}
-      </EdgeLabelRenderer>
+        </EdgeLabelRenderer>
+      )}
     </>
   );
 }

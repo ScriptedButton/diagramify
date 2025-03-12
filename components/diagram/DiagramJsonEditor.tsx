@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Node, Edge } from "reactflow";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
+import { CustomNode, CustomEdge, NodeData, EdgeData } from "./types";
 
 // Custom component for a JSON editor with syntax highlighting
 const JsonEditor = ({
@@ -60,9 +60,15 @@ const JsonEditor = ({
 interface DiagramJsonEditorProps {
   isOpen: boolean;
   onClose: () => void;
-  diagramData: { nodes: Node[]; edges: Edge[] };
-  onSave: (data: { nodes: Node[]; edges: Edge[] }) => void;
+  diagramData: { nodes: CustomNode[]; edges: CustomEdge[] };
+  onSave: (data: { nodes: CustomNode[]; edges: CustomEdge[] }) => void;
 }
+
+type EditableNodeFields = keyof Pick<CustomNode, "id" | "type">;
+type EditableEdgeFields = keyof Pick<
+  CustomEdge,
+  "id" | "source" | "target" | "type"
+>;
 
 export function DiagramJsonEditor({
   isOpen,
@@ -76,8 +82,8 @@ export function DiagramJsonEditor({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fullscreenRef = useRef<HTMLDivElement>(null);
   const [editedData, setEditedData] = useState<{
-    nodes: Node[];
-    edges: Edge[];
+    nodes: CustomNode[];
+    edges: CustomEdge[];
   }>({ nodes: [], edges: [] });
 
   // Toggle true browser fullscreen mode
@@ -209,7 +215,7 @@ export function DiagramJsonEditor({
 
       // Validate nodes structure
       const validNodes = diagramData.nodes.every(
-        (node: Node) =>
+        (node: CustomNode) =>
           node.id &&
           typeof node.position === "object" &&
           typeof node.position.x === "number" &&
@@ -225,7 +231,7 @@ export function DiagramJsonEditor({
 
       // Validate edges structure
       const validEdges = diagramData.edges.every(
-        (edge: Edge) =>
+        (edge: CustomEdge) =>
           edge.id &&
           typeof edge.source === "string" &&
           typeof edge.target === "string"
@@ -249,26 +255,27 @@ export function DiagramJsonEditor({
   // Handle visual editor changes to nodes
   const handleNodeChange = (index: number, field: string, value: unknown) => {
     const updatedNodes = [...editedData.nodes];
+    const node = { ...updatedNodes[index] };
 
     // Handle nested properties
     if (field.includes(".")) {
       const [parent, child] = field.split(".");
-      updatedNodes[index] = {
-        ...updatedNodes[index],
-        [parent]: {
-          ...updatedNodes[index][
-            parent as keyof (typeof updatedNodes)[typeof index]
-          ],
+      if (parent === "data") {
+        node.data = {
+          ...(node.data as NodeData),
           [child]: value,
-        },
-      };
-    } else {
-      updatedNodes[index] = {
-        ...updatedNodes[index],
-        [field]: value,
-      };
+        };
+      } else if (parent === "position") {
+        node.position = {
+          ...node.position,
+          [child]: value,
+        };
+      }
+    } else if (isEditableNodeField(field)) {
+      node[field] = value as string;
     }
 
+    updatedNodes[index] = node;
     setEditedData({ ...editedData, nodes: updatedNodes });
     setJsonText(
       JSON.stringify({ ...editedData, nodes: updatedNodes }, null, 2)
@@ -278,31 +285,36 @@ export function DiagramJsonEditor({
   // Handle visual editor changes to edges
   const handleEdgeChange = (index: number, field: string, value: unknown) => {
     const updatedEdges = [...editedData.edges];
+    const edge = { ...updatedEdges[index] };
 
     // Handle nested properties
     if (field.includes(".")) {
       const [parent, child] = field.split(".");
-      updatedEdges[index] = {
-        ...updatedEdges[index],
-        [parent]: {
-          ...updatedEdges[index][
-            parent as keyof (typeof updatedEdges)[typeof index]
-          ],
+      if (parent === "data") {
+        edge.data = {
+          ...(edge.data as EdgeData),
           [child]: value,
-        },
-      };
-    } else {
-      updatedEdges[index] = {
-        ...updatedEdges[index],
-        [field]: value,
-      };
+        };
+      }
+    } else if (isEditableEdgeField(field)) {
+      edge[field] = value as string;
     }
 
+    updatedEdges[index] = edge;
     setEditedData({ ...editedData, edges: updatedEdges });
     setJsonText(
       JSON.stringify({ ...editedData, edges: updatedEdges }, null, 2)
     );
   };
+
+  // Type guard functions
+  function isEditableNodeField(field: string): field is EditableNodeFields {
+    return ["id", "type"].includes(field);
+  }
+
+  function isEditableEdgeField(field: string): field is EditableEdgeFields {
+    return ["id", "source", "target", "type"].includes(field);
+  }
 
   // Save changes and close
   const handleSave = () => {

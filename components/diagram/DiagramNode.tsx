@@ -21,6 +21,7 @@ interface DiagramNodeProps {
   onPositionChange: (x: number, y: number) => void;
   mode?: DiagramMode;
   isConnecting?: boolean;
+  onDelete?: (nodeId: string) => void;
 }
 
 export function DiagramNode({
@@ -32,6 +33,7 @@ export function DiagramNode({
   onPositionChange,
   mode = "select",
   isConnecting = false,
+  onDelete,
 }: DiagramNodeProps) {
   const x = useMotionValue(node.x);
   const y = useMotionValue(node.y);
@@ -58,6 +60,12 @@ export function DiagramNode({
   // Handle selection and deselection with animation
   const handleSelect = (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    if (mode === "delete" && onDelete) {
+      onDelete(node.id);
+      return;
+    }
+
     onSelect();
 
     if (mode === "select") {
@@ -200,12 +208,12 @@ export function DiagramNode({
               {mode === "connect" && !isConnecting
                 ? "Click to start connecting from this node"
                 : mode === "connect" && isConnecting
-                ? "Currently connecting from this node"
-                : mode === "delete"
-                ? "Click to delete this node"
-                : isCritical
-                ? "Critical Activity - On Critical Path"
-                : `Activity with ${node.slack || "?"} days of slack`}
+                  ? "Currently connecting from this node"
+                  : mode === "delete"
+                    ? "Click to delete this node"
+                    : isCritical
+                      ? "Critical Activity - On Critical Path"
+                      : `Activity with ${node.slack || "?"} days of slack`}
             </p>
           </TooltipContent>
         </Tooltip>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Link,
@@ -12,8 +12,6 @@ import {
   FolderIcon,
   DownloadIcon,
   CircleIcon,
-  SquareIcon,
-  MoveIcon,
   ZapIcon,
   LayoutIcon,
   FileJsonIcon,
@@ -22,7 +20,7 @@ import {
   PanelLeftIcon,
   MousePointerClick,
 } from "lucide-react";
-import { DiagramMode } from "./types";
+import { DiagramMode, CustomNode, CustomEdge } from "./types";
 import { toPng, toSvg, toJpeg } from "html-to-image";
 import {
   Tooltip,
@@ -53,7 +51,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { DiagramJsonEditor } from "./DiagramJsonEditor";
-import { Node, Edge } from "@reactflow/core";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
@@ -62,9 +59,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DiagramToolbarProps {
-  onAddNode: () => void;
   zoom: number;
   setZoom: (zoom: number) => void;
   mode: DiagramMode;
@@ -73,7 +76,7 @@ interface DiagramToolbarProps {
   onRedo?: () => void;
   undoable?: boolean;
   redoable?: boolean;
-  getDiagramData?: () => { nodes: Node[]; edges: Edge[] };
+  getDiagramData?: () => { nodes: CustomNode[]; edges: CustomEdge[] };
   diagramRef?: React.RefObject<HTMLDivElement | null>;
   diagramType?: "AOA" | "AON";
   createDummyActivity?: () => void;
@@ -83,9 +86,11 @@ interface DiagramToolbarProps {
   autoLayoutDiagram?: () => void;
   addStartNode?: () => void;
   addEndNode?: () => void;
-  simpleMode?: boolean;
-  setSimpleMode?: (simple: boolean) => void;
+  advancedMode?: boolean;
+  setAdvancedMode?: (advanced: boolean) => void;
   onConvertNode?: (nodeId: string, type: "start" | "end" | "normal") => void;
+  edgeStyle?: "bezier" | "straight" | "step";
+  setEdgeStyle?: (style: "bezier" | "straight" | "step") => void;
 }
 
 // New component for co-dependency guidance
@@ -188,9 +193,11 @@ export function DiagramToolbar({
   autoLayoutDiagram,
   addStartNode,
   addEndNode,
-  simpleMode,
-  setSimpleMode,
+  advancedMode,
+  setAdvancedMode,
   onConvertNode,
+  edgeStyle = "bezier",
+  setEdgeStyle,
 }: DiagramToolbarProps) {
   const [jsonEditorOpen, setJsonEditorOpen] = useState(false);
 
@@ -381,7 +388,7 @@ export function DiagramToolbar({
 
   // Function to apply changes from JSON editor
   const handleApplyJsonChanges = useCallback(
-    (data: { nodes: Node[]; edges: Edge[] }) => {
+    (data: { nodes: CustomNode[]; edges: CustomEdge[] }) => {
       // Apply the changes to the diagram
       if (diagramRef?.current && getDiagramData) {
         // If we have React Flow instance through getDiagramData, apply changes
@@ -406,129 +413,6 @@ export function DiagramToolbar({
     }
   }, []);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Don't trigger shortcuts if user is typing in an input field
-      if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement
-      ) {
-        return;
-      }
-
-      // Prevent default for all our shortcuts
-      if (
-        (event.key === "s" && (event.ctrlKey || event.metaKey)) || // Save
-        (event.key === "o" && (event.ctrlKey || event.metaKey)) || // Open/Load
-        (event.key === "e" && (event.ctrlKey || event.metaKey)) || // Export
-        (event.key === "n" && event.altKey) || // New (changed from Ctrl to Alt)
-        (event.key === "z" && (event.ctrlKey || event.metaKey)) || // Undo
-        (event.key === "y" && (event.ctrlKey || event.metaKey)) || // Redo
-        event.key === "Delete" ||
-        event.key === "Backspace" ||
-        event.key === "+" ||
-        event.key === "-" ||
-        event.key === "=" || // Often the same key as +
-        event.key === "f" ||
-        event.key === "a" ||
-        event.key === "s" ||
-        event.key === "c" ||
-        event.key === "d" ||
-        event.key === "l" || // Layout shortcut
-        event.key === " " // Space for pan mode
-      ) {
-        event.preventDefault();
-      }
-
-      // Mode shortcuts
-      if (!event.ctrlKey && !event.metaKey && !event.altKey) {
-        if (event.key === "s") setMode("select");
-        if (event.key === "a") setMode("add");
-        if (event.key === "c") setMode("connect");
-        if (event.key === "d") setMode("delete");
-        if (event.key === "l" && autoLayoutDiagram) autoLayoutDiagram();
-        if (event.key === " ") setMode("drag");
-      }
-
-      // Zoom shortcuts
-      if (
-        event.key === "+" ||
-        event.key === "=" ||
-        (event.key === "=" && event.shiftKey)
-      ) {
-        handleZoomIn();
-      }
-      if (event.key === "-") {
-        handleZoomOut();
-      }
-      if (event.key === "f") {
-        calculateCriticalPath();
-      }
-
-      // Delete shortcut
-      if (
-        (event.key === "Delete" || event.key === "Backspace") &&
-        (mode === "select" || mode === "delete")
-      ) {
-        setMode("delete");
-      }
-
-      // Undo/Redo shortcuts
-      if (
-        event.key === "z" &&
-        (event.ctrlKey || event.metaKey) &&
-        !event.shiftKey
-      ) {
-        if (undoable && onUndo) onUndo();
-      }
-      if (
-        (event.key === "y" && (event.ctrlKey || event.metaKey)) ||
-        (event.key === "z" &&
-          (event.ctrlKey || event.metaKey) &&
-          event.shiftKey)
-      ) {
-        if (redoable && onRedo) onRedo();
-      }
-
-      // Save/Load/Export/New shortcuts
-      if (event.key === "s" && (event.ctrlKey || event.metaKey)) {
-        handleSave();
-      }
-      if (event.key === "o" && (event.ctrlKey || event.metaKey)) {
-        handleImport();
-      }
-      if (event.key === "e" && (event.ctrlKey || event.metaKey)) {
-        handleExport();
-      }
-      if (event.key === "n" && event.altKey) {
-        // Changed from Ctrl to Alt
-        handleNewDiagram();
-      }
-    };
-
-    // Add global event listener
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [
-    mode,
-    setMode,
-    handleZoomIn,
-    handleZoomOut,
-    calculateCriticalPath,
-    onUndo,
-    onRedo,
-    undoable,
-    redoable,
-    handleSave,
-    handleImport,
-    handleExport,
-    handleNewDiagram,
-    autoLayoutDiagram,
-  ]);
-
   return (
     <div className="w-full bg-background border-b flex flex-wrap items-center justify-between gap-2 p-2">
       <div className="flex items-center gap-2">
@@ -539,39 +423,29 @@ export function DiagramToolbar({
               <TooltipTrigger asChild>
                 <Button
                   variant={mode === "select" ? "default" : "ghost"}
-                  size="sm"
-                  className={cn(
-                    "h-8 px-2 rounded-sm",
-                    mode === "select" && "bg-primary text-primary-foreground"
-                  )}
+                  size="icon"
                   onClick={() => setMode("select")}
                 >
-                  <MousePointerClick size={16} />
+                  <MousePointerClick className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Select Mode (S)</TooltipContent>
+              <TooltipContent>Select and move nodes</TooltipContent>
             </Tooltip>
 
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant={mode === "add" ? "default" : "ghost"}
-                  size="sm"
-                  className={cn(
-                    "h-8 px-2 rounded-sm",
-                    mode === "add" && "bg-primary text-primary-foreground"
-                  )}
+                  size="icon"
                   onClick={() => setMode("add")}
                 >
-                  {diagramType === "AOA" ? (
-                    <CircleIcon size={16} />
-                  ) : (
-                    <SquareIcon size={16} />
-                  )}
+                  <CircleIcon className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                Add {diagramType === "AOA" ? "Event" : "Activity"} (A)
+                {mode === "add"
+                  ? "Click on canvas to add nodes"
+                  : "Enable add node mode"}
               </TooltipContent>
             </Tooltip>
 
@@ -579,54 +453,26 @@ export function DiagramToolbar({
               <TooltipTrigger asChild>
                 <Button
                   variant={mode === "connect" ? "default" : "ghost"}
-                  size="sm"
-                  className={cn(
-                    "h-8 px-2 rounded-sm",
-                    mode === "connect" && "bg-primary text-primary-foreground"
-                  )}
+                  size="icon"
                   onClick={() => setMode("connect")}
                 >
-                  <Link size={16} />
+                  <Link className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>
-                Connect {diagramType === "AOA" ? "Activities" : "Dependencies"}{" "}
-                (C)
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={mode === "drag" ? "default" : "ghost"}
-                  size="sm"
-                  className={cn(
-                    "h-8 px-2 rounded-sm",
-                    mode === "drag" && "bg-primary text-primary-foreground"
-                  )}
-                  onClick={() => setMode("drag")}
-                >
-                  <MoveIcon size={16} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Pan Mode (Space)</TooltipContent>
+              <TooltipContent>Connect nodes</TooltipContent>
             </Tooltip>
 
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant={mode === "delete" ? "default" : "ghost"}
-                  size="sm"
-                  className={cn(
-                    "h-8 px-2 rounded-sm",
-                    mode === "delete" && "bg-primary text-primary-foreground"
-                  )}
+                  size="icon"
                   onClick={() => setMode("delete")}
                 >
-                  <TrashIcon size={16} />
+                  <TrashIcon className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Delete Mode (D)</TooltipContent>
+              <TooltipContent>Delete nodes and edges</TooltipContent>
             </Tooltip>
           </div>
         </TooltipProvider>
@@ -877,10 +723,10 @@ export function DiagramToolbar({
                     className="h-8 w-8"
                     onClick={addStartNode}
                   >
-                    <PlayIcon size={16} />
+                    <PlayIcon className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Add Start Node</TooltipContent>
+                <TooltipContent>Add start node</TooltipContent>
               </Tooltip>
             )}
 
@@ -894,10 +740,10 @@ export function DiagramToolbar({
                     className="h-8 w-8"
                     onClick={addEndNode}
                   >
-                    <StopCircleIcon size={16} />
+                    <StopCircleIcon className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Add End Node</TooltipContent>
+                <TooltipContent>Add end node</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -906,16 +752,38 @@ export function DiagramToolbar({
 
       <div className="flex items-center gap-2">
         {/* Simple Mode Switch */}
-        {setSimpleMode && (
+        {setAdvancedMode && (
           <div className="flex items-center gap-2 mr-2">
             <Switch
-              id="simple-mode"
-              checked={simpleMode}
-              onCheckedChange={setSimpleMode}
+              id="advanced-mode"
+              checked={advancedMode}
+              onCheckedChange={setAdvancedMode}
             />
-            <Label htmlFor="simple-mode" className="text-sm">
-              Simple Mode
+            <Label htmlFor="advanced-mode" className="text-sm">
+              Advanced Mode
             </Label>
+          </div>
+        )}
+
+        {/* Edge Style Toggle */}
+        {setEdgeStyle && (
+          <div className="flex items-center gap-2 mr-4">
+            <Select
+              value={edgeStyle}
+              onValueChange={(value: "bezier" | "straight" | "step") =>
+                setEdgeStyle(value)
+              }
+            >
+              <SelectTrigger className="h-8 w-32">
+                <SelectValue placeholder="Edge Style" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bezier">Curved</SelectItem>
+                <SelectItem value="straight">Straight</SelectItem>
+                <SelectItem value="step">Right Angles</SelectItem>
+              </SelectContent>
+            </Select>
+            <Label className="text-sm">Edge Style</Label>
           </div>
         )}
 

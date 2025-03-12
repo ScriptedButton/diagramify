@@ -1,15 +1,14 @@
-import { useReactFlow } from "reactflow";
-
-const loadSavedDiagram = () => {
-  const { setNodes, setEdges } = useReactFlow();
+export const loadSavedDiagram = async () => {
   try {
     const savedData = localStorage.getItem("diagramify-save");
     if (savedData) {
-      const parsed = JSON.parse(savedData);
+      const { data } = JSON.parse(savedData);
+
+      console.log("Parsed data", data);
 
       return {
-        nodes: parsed.nodes,
-        edges: parsed.edges,
+        nodes: data.nodes,
+        edges: data.edges,
       };
     }
   } catch (error) {
