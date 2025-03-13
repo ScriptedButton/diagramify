@@ -6,6 +6,7 @@ import {
   useEdgesState,
   ReactFlowProvider,
   type ReactFlowInstance,
+  MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { cn } from "@/lib/utils";
@@ -407,6 +408,10 @@ function DiagramCanvasContent({
         strokeDasharray: dummyDuration === 0 ? "5,5" : "none",
       },
       type: edgeStyle === "bezier" ? "default" : edgeStyle,
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: "#6366f1",
+      },
       data: {
         activityId: dummyTargetActivity,
         duration: dummyDuration,

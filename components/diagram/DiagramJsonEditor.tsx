@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { CustomNode, CustomEdge, NodeData, EdgeData } from "./types";
 
 // Custom component for a JSON editor with syntax highlighting
@@ -62,6 +63,7 @@ interface DiagramJsonEditorProps {
   onClose: () => void;
   diagramData: { nodes: CustomNode[]; edges: CustomEdge[] };
   onSave: (data: { nodes: CustomNode[]; edges: CustomEdge[] }) => void;
+  selectedElementId?: string;
 }
 
 type EditableNodeFields = keyof Pick<CustomNode, "id" | "type">;
@@ -75,8 +77,9 @@ export function DiagramJsonEditor({
   onClose,
   diagramData,
   onSave,
+  selectedElementId,
 }: DiagramJsonEditorProps) {
-  const [activeTab, setActiveTab] = useState<string>("text");
+  const [activeTab, setActiveTab] = useState<string>("visual");
   const [jsonText, setJsonText] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -85,6 +88,8 @@ export function DiagramJsonEditor({
     nodes: CustomNode[];
     edges: CustomEdge[];
   }>({ nodes: [], edges: [] });
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const scrollTargetRef = useRef<string | null>(null);
 
   // Toggle true browser fullscreen mode
   const toggleFullscreen = useCallback(async () => {
@@ -132,26 +137,75 @@ export function DiagramJsonEditor({
     }
   }, [isFullscreen]);
 
-  // Initialize the editor with the current diagram data
+  // Initialize the editor with the current diagram data and focus on selected elements
   useEffect(() => {
     if (isOpen && diagramData) {
+      // Filter data to only show selected element if opened from context menu
+      const filteredData = selectedElementId
+        ? {
+            nodes: diagramData.nodes.filter(
+              (node) => node.id === selectedElementId
+            ),
+            edges: diagramData.edges.filter(
+              (edge) => edge.id === selectedElementId
+            ),
+          }
+        : diagramData;
+
+      setEditedData(filteredData);
+
       const formattedJson = JSON.stringify(
         {
           diagramType: "AOA",
           timestamp: new Date().toISOString(),
-          data: {
-            nodes: diagramData.nodes,
-            edges: diagramData.edges,
-          },
+          data: filteredData,
         },
         null,
         2
       );
       setJsonText(formattedJson);
-      setEditedData(diagramData);
       setError(null);
+
+      // Set expanded items to only show the selected element
+      if (selectedElementId) {
+        setExpandedItems([selectedElementId]);
+        scrollTargetRef.current = selectedElementId;
+      } else {
+        // Previous logic for non-context menu opening
+        const selectedNodes = diagramData.nodes.filter((node) => node.selected);
+        const selectedEdges = diagramData.edges.filter((edge) => edge.selected);
+        const itemsToExpand = [
+          ...selectedNodes.map((node) => node.id),
+          ...selectedEdges.map((edge) => edge.id),
+        ];
+        if (itemsToExpand.length === 0 && !selectedElementId) {
+          if (diagramData.nodes.length > 0)
+            itemsToExpand.push(diagramData.nodes[0].id);
+          if (diagramData.edges.length > 0)
+            itemsToExpand.push(diagramData.edges[0].id);
+        }
+        setExpandedItems(itemsToExpand);
+        if (itemsToExpand.length > 0) {
+          scrollTargetRef.current = itemsToExpand[0];
+        }
+      }
     }
-  }, [isOpen, diagramData]);
+  }, [isOpen, diagramData, selectedElementId]);
+
+  // Handle scrolling to the expanded item
+  useEffect(() => {
+    if (scrollTargetRef.current) {
+      const targetId = scrollTargetRef.current;
+      // Small delay to ensure the accordion item has expanded
+      setTimeout(() => {
+        const element = document.getElementById(`accordion-item-${targetId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        scrollTargetRef.current = null;
+      }, 100);
+    }
+  }, [expandedItems]);
 
   // Browser fullscreen API handling
   useEffect(() => {
@@ -254,57 +308,81 @@ export function DiagramJsonEditor({
 
   // Handle visual editor changes to nodes
   const handleNodeChange = (index: number, field: string, value: unknown) => {
-    const updatedNodes = [...editedData.nodes];
-    const node = { ...updatedNodes[index] };
+    setEditedData((prevData) => {
+      const updatedNodes = [...prevData.nodes];
+      const node = { ...updatedNodes[index] };
 
-    // Handle nested properties
-    if (field.includes(".")) {
-      const [parent, child] = field.split(".");
-      if (parent === "data") {
-        node.data = {
-          ...(node.data as NodeData),
-          [child]: value,
-        };
-      } else if (parent === "position") {
-        node.position = {
-          ...node.position,
-          [child]: value,
-        };
+      if (field.includes(".")) {
+        const [parent, child] = field.split(".");
+        if (parent === "data") {
+          node.data = {
+            ...(node.data as NodeData),
+            [child]: value,
+          };
+        } else if (parent === "position") {
+          node.position = {
+            ...node.position,
+            [child]: value,
+          };
+        }
+      } else if (isEditableNodeField(field)) {
+        node[field] = value as string;
       }
-    } else if (isEditableNodeField(field)) {
-      node[field] = value as string;
-    }
 
-    updatedNodes[index] = node;
-    setEditedData({ ...editedData, nodes: updatedNodes });
-    setJsonText(
-      JSON.stringify({ ...editedData, nodes: updatedNodes }, null, 2)
-    );
+      updatedNodes[index] = node;
+      const newData = { ...prevData, nodes: updatedNodes };
+
+      // Update JSON text synchronously
+      const formattedJson = JSON.stringify(
+        {
+          diagramType: "AOA",
+          timestamp: new Date().toISOString(),
+          data: newData,
+        },
+        null,
+        2
+      );
+      setJsonText(formattedJson);
+
+      return newData;
+    });
   };
 
   // Handle visual editor changes to edges
   const handleEdgeChange = (index: number, field: string, value: unknown) => {
-    const updatedEdges = [...editedData.edges];
-    const edge = { ...updatedEdges[index] };
+    setEditedData((prevData) => {
+      const updatedEdges = [...prevData.edges];
+      const edge = { ...updatedEdges[index] };
 
-    // Handle nested properties
-    if (field.includes(".")) {
-      const [parent, child] = field.split(".");
-      if (parent === "data") {
-        edge.data = {
-          ...(edge.data as EdgeData),
-          [child]: value,
-        };
+      if (field.includes(".")) {
+        const [parent, child] = field.split(".");
+        if (parent === "data") {
+          edge.data = {
+            ...(edge.data as EdgeData),
+            [child]: value,
+          };
+        }
+      } else if (isEditableEdgeField(field)) {
+        edge[field] = value as string;
       }
-    } else if (isEditableEdgeField(field)) {
-      edge[field] = value as string;
-    }
 
-    updatedEdges[index] = edge;
-    setEditedData({ ...editedData, edges: updatedEdges });
-    setJsonText(
-      JSON.stringify({ ...editedData, edges: updatedEdges }, null, 2)
-    );
+      updatedEdges[index] = edge;
+      const newData = { ...prevData, edges: updatedEdges };
+
+      // Update JSON text synchronously
+      const formattedJson = JSON.stringify(
+        {
+          diagramType: "AOA",
+          timestamp: new Date().toISOString(),
+          data: newData,
+        },
+        null,
+        2
+      );
+      setJsonText(formattedJson);
+
+      return newData;
+    });
   };
 
   // Type guard functions
@@ -319,12 +397,49 @@ export function DiagramJsonEditor({
   // Save changes and close
   const handleSave = () => {
     if (!error) {
-      // Extract just the diagram data for the parent component
-      const dataToSave = {
-        nodes: editedData.nodes,
-        edges: editedData.edges,
+      let updatedData;
+      if (selectedElementId) {
+        // If opened from context menu, merge the edited element back into the full diagram
+        const editedElement = editedData.nodes[0] || editedData.edges[0];
+        if (editedElement) {
+          if ("position" in editedElement) {
+            // It's a node
+            updatedData = {
+              nodes: diagramData.nodes.map((node) =>
+                node.id === selectedElementId ? editedData.nodes[0] : node
+              ),
+              edges: diagramData.edges,
+            };
+          } else {
+            // It's an edge
+            updatedData = {
+              nodes: diagramData.nodes,
+              edges: diagramData.edges.map((edge) =>
+                edge.id === selectedElementId ? editedData.edges[0] : edge
+              ),
+            };
+          }
+        } else {
+          updatedData = diagramData;
+        }
+      } else {
+        updatedData = editedData;
+      }
+
+      // Ensure we're passing a clean copy of the data with all necessary fields
+      const cleanData = {
+        nodes: updatedData.nodes.map((node) => ({
+          ...node,
+          data: { ...node.data },
+          position: { ...node.position },
+        })),
+        edges: updatedData.edges.map((edge) => ({
+          ...edge,
+          data: { ...edge.data },
+        })),
       };
-      onSave(dataToSave);
+
+      onSave(cleanData);
       onClose();
     }
   };
@@ -456,9 +571,18 @@ export function DiagramJsonEditor({
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-medium mb-2">Nodes</h3>
-                    <Accordion type="multiple" className="w-full">
+                    <Accordion
+                      type="multiple"
+                      value={expandedItems}
+                      onValueChange={setExpandedItems}
+                      className="w-full"
+                    >
                       {editedData.nodes.map((node, index) => (
-                        <AccordionItem key={node.id} value={node.id}>
+                        <AccordionItem
+                          key={node.id}
+                          value={node.id}
+                          id={`accordion-item-${node.id}`}
+                        >
                           <AccordionTrigger className="text-sm">
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="text-xs">
@@ -586,9 +710,18 @@ export function DiagramJsonEditor({
 
                   <div>
                     <h3 className="text-lg font-medium mb-2">Edges</h3>
-                    <Accordion type="multiple" className="w-full">
+                    <Accordion
+                      type="multiple"
+                      value={expandedItems}
+                      onValueChange={setExpandedItems}
+                      className="w-full"
+                    >
                       {editedData.edges.map((edge, index) => (
-                        <AccordionItem key={edge.id} value={edge.id}>
+                        <AccordionItem
+                          key={edge.id}
+                          value={edge.id}
+                          id={`accordion-item-${edge.id}`}
+                        >
                           <AccordionTrigger className="text-sm">
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="text-xs">
@@ -689,6 +822,124 @@ export function DiagramJsonEditor({
                                   />
                                 </div>
                               )}
+                              <div className="col-span-2 grid grid-cols-2 gap-4">
+                                <div className="flex items-center justify-between space-x-2">
+                                  <Label htmlFor={`edge-${index}-hideLabel`}>
+                                    Hide Label
+                                  </Label>
+                                  <Switch
+                                    id={`edge-${index}-hideLabel`}
+                                    checked={
+                                      (edge.data?.hideLabel as boolean) ?? false
+                                    }
+                                    onCheckedChange={(checked) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.hideLabel",
+                                        checked
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div className="flex items-center justify-between space-x-2">
+                                  <Label htmlFor={`edge-${index}-isDashed`}>
+                                    Dashed Line
+                                  </Label>
+                                  <Switch
+                                    id={`edge-${index}-isDashed`}
+                                    checked={
+                                      (edge.data?.isDashed as boolean) ?? false
+                                    }
+                                    onCheckedChange={(checked) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.isDashed",
+                                        checked
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div className="flex items-center justify-between space-x-2">
+                                  <Label htmlFor={`edge-${index}-isCritical`}>
+                                    Critical Path
+                                  </Label>
+                                  <Switch
+                                    id={`edge-${index}-isCritical`}
+                                    checked={
+                                      (edge.data?.isCritical as boolean) ??
+                                      false
+                                    }
+                                    onCheckedChange={(checked) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.isCritical",
+                                        checked
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div className="flex items-center justify-between space-x-2">
+                                  <Label
+                                    htmlFor={`edge-${index}-hasCoDependency`}
+                                  >
+                                    Co-dependent
+                                  </Label>
+                                  <Switch
+                                    id={`edge-${index}-hasCoDependency`}
+                                    checked={
+                                      (edge.data?.hasCoDependency as boolean) ??
+                                      false
+                                    }
+                                    onCheckedChange={(checked) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.hasCoDependency",
+                                        checked
+                                      )
+                                    }
+                                  />
+                                </div>
+                              </div>
+                              {edge.data?.earlyStart !== undefined && (
+                                <div>
+                                  <Label htmlFor={`edge-${index}-earlyStart`}>
+                                    Early Start
+                                  </Label>
+                                  <Input
+                                    id={`edge-${index}-earlyStart`}
+                                    type="number"
+                                    value={edge.data.earlyStart}
+                                    onChange={(e) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.earlyStart",
+                                        parseInt(e.target.value) || 0
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
+                              )}
+                              {edge.data?.earlyFinish !== undefined && (
+                                <div>
+                                  <Label htmlFor={`edge-${index}-earlyFinish`}>
+                                    Early Finish
+                                  </Label>
+                                  <Input
+                                    id={`edge-${index}-earlyFinish`}
+                                    type="number"
+                                    value={edge.data.earlyFinish}
+                                    onChange={(e) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.earlyFinish",
+                                        parseInt(e.target.value) || 0
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
+                              )}
                             </div>
                           </AccordionContent>
                         </AccordionItem>
@@ -754,7 +1005,7 @@ export function DiagramJsonEditor({
         </DialogHeader>
 
         <Tabs
-          defaultValue="text"
+          defaultValue="visual"
           value={activeTab}
           onValueChange={setActiveTab}
           className="flex-1 flex flex-col min-h-0"
@@ -805,9 +1056,18 @@ export function DiagramJsonEditor({
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-medium mb-2">Nodes</h3>
-                  <Accordion type="multiple" className="w-full">
+                  <Accordion
+                    type="multiple"
+                    value={expandedItems}
+                    onValueChange={setExpandedItems}
+                    className="w-full"
+                  >
                     {editedData.nodes.map((node, index) => (
-                      <AccordionItem key={node.id} value={node.id}>
+                      <AccordionItem
+                        key={node.id}
+                        value={node.id}
+                        id={`accordion-item-${node.id}`}
+                      >
                         <AccordionTrigger className="text-sm">
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="text-xs">
@@ -929,9 +1189,18 @@ export function DiagramJsonEditor({
 
                 <div>
                   <h3 className="text-lg font-medium mb-2">Edges</h3>
-                  <Accordion type="multiple" className="w-full">
+                  <Accordion
+                    type="multiple"
+                    value={expandedItems}
+                    onValueChange={setExpandedItems}
+                    className="w-full"
+                  >
                     {editedData.edges.map((edge, index) => (
-                      <AccordionItem key={edge.id} value={edge.id}>
+                      <AccordionItem
+                        key={edge.id}
+                        value={edge.id}
+                        id={`accordion-item-${edge.id}`}
+                      >
                         <AccordionTrigger className="text-sm">
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="text-xs">
@@ -1021,6 +1290,123 @@ export function DiagramJsonEditor({
                                     handleEdgeChange(
                                       index,
                                       "data.duration",
+                                      parseInt(e.target.value) || 0
+                                    )
+                                  }
+                                  className="mt-1"
+                                />
+                              </div>
+                            )}
+                            <div className="col-span-2 grid grid-cols-2 gap-4">
+                              <div className="flex items-center justify-between space-x-2">
+                                <Label htmlFor={`edge-${index}-hideLabel`}>
+                                  Hide Label
+                                </Label>
+                                <Switch
+                                  id={`edge-${index}-hideLabel`}
+                                  checked={
+                                    (edge.data?.hideLabel as boolean) ?? false
+                                  }
+                                  onCheckedChange={(checked) =>
+                                    handleEdgeChange(
+                                      index,
+                                      "data.hideLabel",
+                                      checked
+                                    )
+                                  }
+                                />
+                              </div>
+                              <div className="flex items-center justify-between space-x-2">
+                                <Label htmlFor={`edge-${index}-isDashed`}>
+                                  Dashed Line
+                                </Label>
+                                <Switch
+                                  id={`edge-${index}-isDashed`}
+                                  checked={
+                                    (edge.data?.isDashed as boolean) ?? false
+                                  }
+                                  onCheckedChange={(checked) =>
+                                    handleEdgeChange(
+                                      index,
+                                      "data.isDashed",
+                                      checked
+                                    )
+                                  }
+                                />
+                              </div>
+                              <div className="flex items-center justify-between space-x-2">
+                                <Label htmlFor={`edge-${index}-isCritical`}>
+                                  Critical Path
+                                </Label>
+                                <Switch
+                                  id={`edge-${index}-isCritical`}
+                                  checked={
+                                    (edge.data?.isCritical as boolean) ?? false
+                                  }
+                                  onCheckedChange={(checked) =>
+                                    handleEdgeChange(
+                                      index,
+                                      "data.isCritical",
+                                      checked
+                                    )
+                                  }
+                                />
+                              </div>
+                              <div className="flex items-center justify-between space-x-2">
+                                <Label
+                                  htmlFor={`edge-${index}-hasCoDependency`}
+                                >
+                                  Co-dependent
+                                </Label>
+                                <Switch
+                                  id={`edge-${index}-hasCoDependency`}
+                                  checked={
+                                    (edge.data?.hasCoDependency as boolean) ??
+                                    false
+                                  }
+                                  onCheckedChange={(checked) =>
+                                    handleEdgeChange(
+                                      index,
+                                      "data.hasCoDependency",
+                                      checked
+                                    )
+                                  }
+                                />
+                              </div>
+                            </div>
+                            {edge.data?.earlyStart !== undefined && (
+                              <div>
+                                <Label htmlFor={`edge-${index}-earlyStart`}>
+                                  Early Start
+                                </Label>
+                                <Input
+                                  id={`edge-${index}-earlyStart`}
+                                  type="number"
+                                  value={edge.data.earlyStart}
+                                  onChange={(e) =>
+                                    handleEdgeChange(
+                                      index,
+                                      "data.earlyStart",
+                                      parseInt(e.target.value) || 0
+                                    )
+                                  }
+                                  className="mt-1"
+                                />
+                              </div>
+                            )}
+                            {edge.data?.earlyFinish !== undefined && (
+                              <div>
+                                <Label htmlFor={`edge-${index}-earlyFinish`}>
+                                  Early Finish
+                                </Label>
+                                <Input
+                                  id={`edge-${index}-earlyFinish`}
+                                  type="number"
+                                  value={edge.data.earlyFinish}
+                                  onChange={(e) =>
+                                    handleEdgeChange(
+                                      index,
+                                      "data.earlyFinish",
                                       parseInt(e.target.value) || 0
                                     )
                                   }

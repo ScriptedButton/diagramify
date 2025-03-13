@@ -64,11 +64,12 @@ export interface CustomNodeProps extends Omit<NodeProps, "data"> {
 // Extend Window interface to include our custom functions
 declare global {
   interface Window {
-    updateDiagramNode?: (nodeId: string, newData: Partial<NodeData>) => void;
-    updateDiagramEdge?: (edgeId: string, newData: Partial<EdgeData>) => void;
+    updateDiagramNode?: (nodeId: string, data: Partial<NodeData>) => void;
+    updateDiagramEdge?: (edgeId: string, data: Partial<EdgeData>) => void;
     updateDiagramFromJson?: (data: {
       nodes: CustomNode[];
       edges: CustomEdge[];
     }) => void;
+    openDiagramEditor?: (elementId?: string) => void;
   }
 }

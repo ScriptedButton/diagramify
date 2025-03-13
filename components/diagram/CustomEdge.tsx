@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import {
   EdgeProps,
   EdgeLabelRenderer,
@@ -8,6 +8,13 @@ import {
   getBezierPath,
 } from "@xyflow/react";
 import { cn } from "@/lib/utils";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { Minus, Eye, EyeOff, Settings, PanelLeftIcon } from "lucide-react";
 
 interface EdgeData {
   activityId?: string;
@@ -18,6 +25,8 @@ interface EdgeData {
   isCritical?: boolean;
   hasCoDependency?: boolean;
   advancedMode?: boolean;
+  isDashed?: boolean;
+  hideLabel?: boolean;
 }
 
 export function CustomEdge({
@@ -32,6 +41,12 @@ export function CustomEdge({
   markerEnd,
   style,
 }: EdgeProps) {
+  const [localData, setLocalData] = useState<EdgeData>({
+    isDashed: Boolean(data?.isDashed),
+    hideLabel: Boolean(data?.hideLabel),
+    ...data,
+  });
+
   // Calculate a unique curvature based on the edge ID to prevent overlapping
   const edgeIdNumber = parseInt(id.replace(/\D/g, ""), 10);
   const baseCurvature = 0.35;
@@ -89,11 +104,28 @@ export function CustomEdge({
     }
   }, [id, data]);
 
+  const handleToggleDashed = useCallback(() => {
+    const newData = { ...localData, isDashed: !localData.isDashed };
+    setLocalData(newData);
+    window.updateDiagramEdge?.(id, newData);
+  }, [id, localData]);
+
+  const handleToggleLabel = useCallback(() => {
+    const newData = { ...localData, hideLabel: !localData.hideLabel };
+    setLocalData(newData);
+    window.updateDiagramEdge?.(id, newData);
+  }, [id, localData]);
+
+  const handleEditProperties = useCallback(() => {
+    if (window.openDiagramEditor) {
+      window.openDiagramEditor(id);
+    }
+  }, [id]);
+
   // Format the label based on the data
   const formatLabel = () => {
-    if (!data) return null;
+    if (!localData || localData.hideLabel) return null;
 
-    const edgeData = data as EdgeData;
     const {
       activityId,
       duration,
@@ -101,7 +133,7 @@ export function CustomEdge({
       hasCoDependency,
       advancedMode,
       earlyStart,
-    } = edgeData;
+    } = localData;
 
     if (!activityId) return null;
 
@@ -133,23 +165,26 @@ export function CustomEdge({
 
   // Check if we should render the label
   const shouldRenderLabel = () => {
-    if (!data) return false;
-    const edgeData = data as EdgeData;
-    return typeof edgeData.activityId === "string";
+    if (!localData || localData.hideLabel) return false;
+    return typeof localData.activityId === "string";
   };
 
   const label = formatLabel();
 
-  return (
-    <>
+  const edgeElement = (
+    <g className="react-flow__edge-wrapper">
       <BaseEdge
         path={edgePath}
         markerEnd={markerEnd}
         style={{
           ...style,
           stroke:
-            style?.stroke || (data?.hasCoDependency ? "#6366f1" : "#94a3b8"),
+            style?.stroke ||
+            (localData?.hasCoDependency ? "#6366f1" : "#94a3b8"),
           strokeWidth: style?.strokeWidth || 2,
+          strokeDasharray: localData?.isDashed
+            ? "5,5"
+            : style?.strokeDasharray || "none",
         }}
       />
       {shouldRenderLabel() && label && (
@@ -172,6 +207,35 @@ export function CustomEdge({
           </div>
         </EdgeLabelRenderer>
       )}
-    </>
+    </g>
+  );
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{edgeElement}</ContextMenuTrigger>
+      <ContextMenuContent className="w-48">
+        <ContextMenuItem onClick={handleToggleDashed}>
+          <Minus className="mr-2 h-4 w-4" />
+          {localData?.isDashed ? "Make Solid" : "Make Dashed"}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={handleToggleLabel}>
+          {!localData?.hideLabel ? (
+            <>
+              <EyeOff className="mr-2 h-4 w-4" />
+              Hide Label
+            </>
+          ) : (
+            <>
+              <Eye className="mr-2 h-4 w-4" />
+              Show Label
+            </>
+          )}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={handleEditProperties}>
+          <PanelLeftIcon className="mr-2 h-4 w-4" />
+          Edit Properties
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

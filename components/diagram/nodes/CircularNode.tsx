@@ -12,6 +12,7 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from "@/components/ui/context-menu";
+import { Settings } from "lucide-react";
 
 export function CircularNode({
   id,
@@ -304,6 +305,10 @@ export function CircularNode({
     }
   };
 
+  const handleEditProperties = () => {
+    window.openDiagramEditor?.();
+  };
+
   return (
     <div>
       {/* Handles in all directions for maximum flexibility in connecting */}
@@ -369,6 +374,10 @@ export function CircularNode({
           </motion.div>
         </ContextMenuTrigger>
         <ContextMenuContent>
+          <ContextMenuItem onClick={handleEditProperties}>
+            <Settings className="mr-2 h-4 w-4" />
+            Edit Properties
+          </ContextMenuItem>
           <ContextMenuItem
             onSelect={() =>
               updateNodeData({
