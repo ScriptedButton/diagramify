@@ -15,6 +15,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Minus, Eye, EyeOff, PanelLeftIcon } from "lucide-react";
+import { CustomWindow } from "./types";
 
 interface EdgeData {
   activityId?: string;
@@ -156,17 +157,20 @@ export function CustomEdge({
   const onEdgeClick = useCallback(() => {
     const currentDuration = data?.duration?.toString() || "";
     const newDuration = window.prompt(
-      "Enter duration (leave empty for no duration):",
+      "Enter duration (can use decimal values):",
       currentDuration
     );
     if (newDuration !== null) {
       const duration =
-        newDuration.trim() === "" ? undefined : parseInt(newDuration, 10);
+        newDuration.trim() === "" ? undefined : parseFloat(newDuration);
       if (
         newDuration.trim() === "" ||
-        (typeof duration === "number" && duration > 0)
+        (typeof duration === "number" && !isNaN(duration) && duration > 0)
       ) {
-        window.updateDiagramEdge?.(id, { ...data, duration });
+        const customWindow = window as unknown as CustomWindow;
+        customWindow.updateDiagramEdge?.(id, { ...data, duration });
+      } else {
+        window.alert("Please enter a valid positive number for duration.");
       }
     }
   }, [id, data]);
@@ -174,74 +178,77 @@ export function CustomEdge({
   const handleToggleDashed = useCallback(() => {
     const newData = { ...localData, isDashed: !localData.isDashed };
     setLocalData(newData);
-    window.updateDiagramEdge?.(id, newData);
+    const customWindow = window as unknown as CustomWindow;
+    customWindow.updateDiagramEdge?.(id, newData);
   }, [id, localData]);
 
   const handleToggleLabel = useCallback(() => {
     const newData = { ...localData, hideLabel: !localData.hideLabel };
     setLocalData(newData);
-    window.updateDiagramEdge?.(id, newData);
+    const customWindow = window as unknown as CustomWindow;
+    customWindow.updateDiagramEdge?.(id, newData);
   }, [id, localData]);
 
   const handleEditProperties = useCallback(() => {
-    if (window.openDiagramEditor) {
-      window.openDiagramEditor(id);
+    const customWindow = window as unknown as CustomWindow;
+    if (customWindow.openDiagramEditor) {
+      customWindow.openDiagramEditor(id);
     }
   }, [id]);
+
+  // Helper function to format numbers with appropriate decimal places
+  const formatNumber = (num: number | undefined): string => {
+    if (num === undefined) return "0";
+    // Show up to 2 decimal places, but only if needed
+    return Number.isInteger(num)
+      ? num.toString()
+      : num
+          .toFixed(3)
+          .replace(/\.00$/, "")
+          .replace(/(\.\d+?)0+$/, "$1");
+  };
 
   // Format the label based on the data
   const formatEdgeLabel = (data: EdgeData) => {
     // Return early if there's no data or hideLabel is true
     if (!data || data.hideLabel) return "";
 
-    console.log(`Advanced mode: ${data.advancedMode}`);
+    console.log(
+      `Edge ${id} formatting with advancedMode: ${data.advancedMode}`
+    );
 
+    // Basic format for non-advanced mode
     if (!data.advancedMode) {
-      return `${data.activityId} (${data.duration})`;
+      // Even in simple mode, we may need to show activity ID and duration
+      if (data.activityId && data.duration !== undefined) {
+        return `${data.activityId} (${formatNumber(data.duration)})`;
+      } else if (data.label) {
+        return data.label;
+      }
+      return "";
     }
 
-    // For debug, log what we're trying to format
-    console.log(`Formatting edge label with data:`, data);
-
+    // Advanced mode formatting
     let result = "";
 
-    // First line format: ActivityID (Duration,EarlyFinish)
-    if (
-      data.activityId &&
-      data.duration !== undefined &&
-      data.earlyFinish !== undefined
-    ) {
-      result = `${data.activityId} (${data.earlyStart},${data.earlyFinish})`;
-    }
-    // If we have activityId but missing some values
-    else if (data.activityId) {
-      if (data.duration !== undefined) {
-        result = `${data.activityId} (${data.duration})`;
+    // First line format: ActivityID (EarlyStart,EarlyFinish) - without the ES, EF prefixes
+    if (data.activityId && data.duration !== undefined) {
+      if (data.earlyStart !== undefined && data.earlyFinish !== undefined) {
+        result = `${data.activityId} (${formatNumber(data.earlyStart)}, ${formatNumber(data.earlyFinish)})`;
       } else {
-        result = data.activityId;
+        result = `${data.activityId} (${formatNumber(data.duration)})`;
       }
-    }
-    // If no activity ID but there's a label, use that
-    else if (data.label) {
+    } else if (data.label) {
       result = data.label;
     }
-    // Generic activity label
-    else if (data.duration !== undefined) {
-      result = `Activity (${data.duration})`;
-    }
 
-    // Second line: Duration + late start and late finish if available
+    // Second line: Duration + late start and late finish if available - without LS, LF prefixes
     if (
       data.duration !== undefined &&
       data.lateStart !== undefined &&
       data.lateFinish !== undefined
     ) {
-      result += `\n${data.duration} (${data.lateStart},${data.lateFinish})`;
-
-      // Add slack information if available
-      // if (data.slack !== undefined) {
-      //   result += ` S:${data.slack}`;
-      // }
+      result += `\n${formatNumber(data.duration)} (${formatNumber(data.lateStart)}, ${formatNumber(data.lateFinish)})`;
     }
 
     return result;
@@ -303,7 +310,9 @@ export function CustomEdge({
     }
 
     // Highlight critical path edges - this takes precedence
-    if (data?.isCritical) {
+    // But only if the critical path toggle is on
+    const customWindow = window as unknown as CustomWindow;
+    if (data?.isCritical && customWindow.showCriticalPath) {
       style.stroke = "#ef4444"; // Red color for critical path
       style.strokeWidth = 3;
     }
@@ -339,7 +348,8 @@ export function CustomEdge({
               "px-2 py-1",
               "text-xs",
               "leading-tight",
-              localData?.isCritical
+              localData?.isCritical &&
+                (window as unknown as CustomWindow).showCriticalPath!
                 ? "font-medium text-red-600 border border-red-400"
                 : localData?.hasCoDependency
                   ? "font-medium text-indigo-600 border border-indigo-400"

@@ -418,7 +418,8 @@ export function calculateCriticalPath(
     const lf = (edge.data?.lateFinish as number) || 0;
     const slack = ls - es;
 
-    // Make sure to include complete timing information in edge data
+    // Mark edges as critical, but don't apply styling directly
+    // This separation allows us to toggle the visual display of the critical path
     edge.data = {
       ...edge.data,
       earlyStart: es,
@@ -426,13 +427,13 @@ export function calculateCriticalPath(
       lateStart: ls,
       lateFinish: lf,
       slack,
-      isCritical: slack === 0,
+      isCritical: Math.abs(slack) < 0.0001, // Use small threshold to handle floating point imprecision
     };
 
     // For debugging
     if (edge.data?.activityId) {
       console.log(
-        `Edge ${edge.data.activityId} - ES:${es}, EF:${ef}, LS:${ls}, LF:${lf}, Slack:${slack}`
+        `Edge ${edge.data.activityId} - ES:${es}, EF:${ef}, LS:${ls}, LF:${lf}, Slack:${slack}, Critical:${slack === 0}`
       );
     }
   });
@@ -443,11 +444,11 @@ export function calculateCriticalPath(
     const ls = (node.data?.lateStart as number) || 0;
     const slack = ls - es;
 
-    // First set slack and reset critical flag
+    // Mark nodes as critical, but don't apply styling directly
     node.data = {
       ...node.data,
       slack,
-      isCritical: slack === 0, // Node is critical if and ONLY if slack is zero
+      isCritical: Math.abs(slack) < 0.0001, // Node is critical if and ONLY if slack is (near) zero
       // Remove temporary processing flags before returning
       processed: undefined,
       backwardProcessed: undefined,

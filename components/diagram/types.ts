@@ -65,6 +65,13 @@ export interface CustomNodeProps extends Omit<NodeProps, "data"> {
   data: NodeData;
 }
 
+export interface CustomWindow extends Window {
+  updateDiagramNode?: (id: string, data: any) => void;
+  updateDiagramEdge?: (id: string, data: any) => void;
+  openDiagramEditor?: (elementId?: string) => void;
+  showCriticalPath?: boolean;
+}
+
 // Extend Window interface to include our custom functions
 declare global {
   interface Window {

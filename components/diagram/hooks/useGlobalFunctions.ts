@@ -2,10 +2,23 @@ import { useEffect } from "react";
 import { Node, Edge } from "@xyflow/react";
 import { EdgeData, NodeData, CustomNode, CustomEdge } from "../types";
 
+interface CustomWindow extends Window {
+  updateDiagramNode?: (id: string, data: any) => void;
+  updateDiagramEdge?: (id: string, data: any) => void;
+  exportDiagramAsJSON?: () => void;
+  exportDiagramAsPNG?: () => void;
+  exportDiagramAsSVG?: () => void;
+  openDiagramEditor?: (elementId: string | undefined) => void;
+  showCriticalPath?: boolean;
+}
+
+declare const window: CustomWindow;
+
 interface UseGlobalFunctionsProps {
   setNodes: (updater: (nodes: Node[]) => Node[]) => void;
   setEdges: (updater: (edges: Edge[]) => Edge[]) => Edge[];
   updateEdgeData: (edgeId: string, data: Partial<EdgeData>) => void;
+  showCriticalPath?: boolean;
 }
 
 declare global {
@@ -23,6 +36,7 @@ export function useGlobalFunctions({
   setNodes,
   setEdges,
   updateEdgeData,
+  showCriticalPath = false,
 }: UseGlobalFunctionsProps) {
   // Setup global functions
   useEffect(() => {
@@ -53,11 +67,15 @@ export function useGlobalFunctions({
       }
     };
 
+    // Set the critical path display property
+    window.showCriticalPath = showCriticalPath;
+
     // Cleanup when component unmounts
     return () => {
       delete window.updateDiagramNode;
       delete window.updateDiagramEdge;
       delete window.updateDiagramFromJson;
+      delete window.showCriticalPath;
     };
-  }, [setNodes, setEdges, updateEdgeData]);
+  }, [setNodes, setEdges, updateEdgeData, showCriticalPath]);
 }

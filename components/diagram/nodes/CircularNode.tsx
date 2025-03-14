@@ -13,6 +13,7 @@ import {
   ContextMenuSeparator,
 } from "@/components/ui/context-menu";
 import { Settings } from "lucide-react";
+import { CustomWindow } from "@/components/diagram/types";
 
 export function CircularNode({
   id,
@@ -95,7 +96,10 @@ export function CircularNode({
       "flex items-center justify-center",
       "transition-all duration-200",
       "shadow-lg",
-      !nodeData.isStartEvent && !nodeData.isEndEvent && isOnCriticalPath
+      !nodeData.isStartEvent &&
+        !nodeData.isEndEvent &&
+        isOnCriticalPath &&
+        (window as unknown as CustomWindow).showCriticalPath
         ? "border-red-500 dark:border-red-500 border-2 bg-red-50 dark:bg-red-950/30"
         : "border-primary border bg-background",
       selected
@@ -145,7 +149,10 @@ export function CircularNode({
             baseClasses,
             "w-24 h-24 rounded-full",
             "border-2",
-            isOnCriticalPath ? "critical-node" : ""
+            isOnCriticalPath &&
+              (window as unknown as CustomWindow).showCriticalPath
+              ? "critical-node"
+              : ""
           )}
         >
           <div className="flex flex-col items-center justify-center w-full h-full">
@@ -208,7 +215,10 @@ export function CircularNode({
           baseClasses,
           "w-24 h-24 rounded-full",
           "border-2",
-          isOnCriticalPath ? "critical-node" : ""
+          isOnCriticalPath &&
+            (window as unknown as CustomWindow).showCriticalPath
+            ? "critical-node"
+            : ""
         )}
         style={
           nodeData.isStartEvent || nodeData.isEndEvent ? customStyle : undefined

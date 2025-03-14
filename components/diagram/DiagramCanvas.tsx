@@ -7,6 +7,8 @@ import {
   ReactFlowProvider,
   type ReactFlowInstance,
   MarkerType,
+  Node,
+  Edge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { cn } from "@/lib/utils";
@@ -31,6 +33,214 @@ import { useGlobalFunctions } from "./hooks/useGlobalFunctions";
 import { DummyMakerDialog } from "./DummyMakerDialog";
 import { useNodeDeletion } from "./hooks/useNodeDeletion";
 import { calculateCriticalPath } from "./utils/CriticalPathCalculator";
+
+// Add type for node timing data
+interface NodeTimingData {
+  earliest: number;
+  latest: number;
+}
+
+// Helper functions for calculating times
+const calculateEarlyTimes = (
+  nodes: Node[],
+  edges: Edge[]
+): Map<string, NodeTimingData> => {
+  const timings = new Map<string, NodeTimingData>();
+
+  // Initialize all nodes with earliest time 0
+  nodes.forEach((node) => {
+    timings.set(node.id, { earliest: 0, latest: Infinity });
+  });
+
+  // Find roots (nodes with no incoming edges)
+  const hasIncomingEdge = new Set<string>();
+  edges.forEach((edge) => {
+    hasIncomingEdge.add(edge.target);
+  });
+
+  const rootNodes = nodes.filter((node) => !hasIncomingEdge.has(node.id));
+
+  // If no root nodes, just use the first node
+  if (rootNodes.length === 0 && nodes.length > 0) {
+    rootNodes.push(nodes[0]);
+  }
+
+  // To prevent infinite loops, limit iterations
+  let iterations = 0;
+  const maxIterations = nodes.length * 2;
+
+  // Forward pass - calculate earliest times
+  let changed = true;
+  while (changed && iterations < maxIterations) {
+    changed = false;
+    iterations++;
+
+    edges.forEach((edge) => {
+      if (!edge.source || !edge.target || !edge.data) return;
+
+      const sourceTime = timings.get(edge.source)?.earliest || 0;
+      // Use parseFloat to ensure we handle decimal durations correctly
+      const duration = parseFloat(edge.data.duration?.toString() || "0");
+      const targetTime = timings.get(edge.target)?.earliest || 0;
+
+      if (sourceTime + duration > targetTime) {
+        timings.set(edge.target, {
+          earliest: Number((sourceTime + duration).toFixed(4)), // Fix precision issues
+          latest: timings.get(edge.target)?.latest || Infinity,
+        });
+        changed = true;
+      }
+    });
+  }
+
+  return timings;
+};
+
+const calculateLateTimes = (
+  nodes: Node[],
+  edges: Edge[],
+  earlyTimes: Map<string, NodeTimingData>
+): Map<string, NodeTimingData> => {
+  const timings = new Map<string, NodeTimingData>();
+
+  // Find the project duration based on the maximum earliest time
+  const projectDuration = Math.max(
+    ...Array.from(earlyTimes.values()).map((t) => t.earliest || 0),
+    0 // Default to 0 if array is empty
+  );
+
+  // Initialize all nodes with latest time = project duration
+  nodes.forEach((node) => {
+    timings.set(node.id, {
+      earliest: earlyTimes.get(node.id)?.earliest || 0,
+      latest: projectDuration,
+    });
+  });
+
+  // Find terminal nodes (nodes with no outgoing edges)
+  const hasOutgoingEdge = new Set<string>();
+  edges.forEach((edge) => {
+    hasOutgoingEdge.add(edge.source);
+  });
+
+  const terminalNodes = nodes.filter((node) => !hasOutgoingEdge.has(node.id));
+
+  // If no terminal nodes, just use all nodes with the maximum earliest time
+  if (terminalNodes.length === 0) {
+    const maxEarliest = Math.max(
+      ...nodes.map((node) => earlyTimes.get(node.id)?.earliest || 0)
+    );
+    nodes.forEach((node) => {
+      if ((earlyTimes.get(node.id)?.earliest || 0) === maxEarliest) {
+        terminalNodes.push(node);
+      }
+    });
+  }
+
+  // To prevent infinite loops, limit iterations
+  let iterations = 0;
+  const maxIterations = nodes.length * 2;
+
+  // Backward pass - calculate latest times
+  let changed = true;
+  while (changed && iterations < maxIterations) {
+    changed = false;
+    iterations++;
+
+    edges.forEach((edge) => {
+      if (!edge.source || !edge.target || !edge.data) return;
+
+      const targetTime = timings.get(edge.target)?.latest || projectDuration;
+      // Use parseFloat for correct decimal handling
+      const duration = parseFloat(edge.data.duration?.toString() || "0");
+      const sourceTime = timings.get(edge.source)?.latest || projectDuration;
+
+      if (targetTime - duration < sourceTime) {
+        timings.set(edge.source, {
+          earliest: earlyTimes.get(edge.source)?.earliest || 0,
+          latest: Number((targetTime - duration).toFixed(4)), // Fix precision issues
+        });
+        changed = true;
+      }
+    });
+  }
+
+  return timings;
+};
+
+// Update updateEdgeTimings to respect showCriticalPath state
+const updateEdgeTimings = (
+  edge: Edge,
+  nodeTimings: Map<string, NodeTimingData>,
+  criticalEdges: Set<string>,
+  showCriticalStyling: boolean
+): Edge => {
+  if (!edge.source || !edge.target || !edge.data) return edge;
+
+  const sourceNode = nodeTimings.get(edge.source);
+  const targetNode = nodeTimings.get(edge.target);
+
+  if (!sourceNode || !targetNode) return edge;
+
+  // Use parseFloat for decimal durations
+  const duration = parseFloat(edge.data.duration?.toString() || "0");
+  const earlyStart = Number(sourceNode.earliest.toFixed(4));
+  const earlyFinish = Number((earlyStart + duration).toFixed(4));
+  const lateFinish = Number(targetNode.latest.toFixed(4));
+  const lateStart = Number((lateFinish - duration).toFixed(4));
+
+  // Calculate float (slack) with proper precision
+  const float = Number((lateStart - earlyStart).toFixed(4));
+  const isCritical = Math.abs(float) < 0.0001 || criticalEdges.has(edge.id);
+
+  // Format numbers for display, removing unnecessary decimal places
+  const formatNumber = (num: number): string => {
+    if (Number.isInteger(num)) return num.toString();
+    return num
+      .toFixed(3)
+      .replace(/\.00$/, "")
+      .replace(/(\.\d+?)0+$/, "$1");
+  };
+
+  return {
+    ...edge,
+    data: {
+      ...edge.data,
+      earlyStart,
+      earlyFinish,
+      lateStart,
+      lateFinish,
+      float,
+      isCritical,
+    },
+    // Format the label with appropriate decimal handling, without ES/EF prefixes
+    label: `${edge.data.activityId}(${formatNumber(duration)}, ${formatNumber(earlyStart)})`,
+    // Only apply critical path styling if the toggle is on
+    style: {
+      ...edge.style,
+      stroke:
+        isCritical && showCriticalStyling
+          ? "#ef4444"
+          : edge.data.hasCoDependency
+            ? "#6366f1"
+            : "#94a3b8",
+      strokeWidth:
+        isCritical && showCriticalStyling
+          ? 3
+          : edge.data.hasCoDependency
+            ? 2.5
+            : 2,
+    },
+  };
+};
+
+// Add interface definition at the top of the file
+interface CustomWindow extends Window {
+  updateDiagramNode?: (id: string, data: any) => void;
+  updateDiagramEdge?: (id: string, data: any) => void;
+  openDiagramEditor?: (elementId?: string) => void;
+  showCriticalPath?: boolean;
+}
 
 export function DiagramCanvas({
   className,
@@ -68,6 +278,8 @@ function DiagramCanvasContent({
   );
   const [dummyDuration, setDummyDuration] = useState<number>(0);
   const [connectToEndNode, setConnectToEndNode] = useState(false);
+  // Add state for tracking critical path styling toggle
+  const [showCriticalPath, setShowCriticalPath] = useState(false);
 
   // Update state management for undo/redo with proper typing
   const [undoStack, setUndoStack] = useState<
@@ -171,7 +383,17 @@ function DiagramCanvasContent({
       return newEdges;
     },
     updateEdgeData,
+    showCriticalPath,
   });
+
+  // Update the effect that uses window.showCriticalPath
+  useEffect(() => {
+    // Update the global window property to match our state
+    const customWindow = window as unknown as CustomWindow;
+    if (customWindow.showCriticalPath !== undefined) {
+      customWindow.showCriticalPath = showCriticalPath;
+    }
+  }, [showCriticalPath]);
 
   // Update undo/redo state
   useEffect(() => {
@@ -480,6 +702,10 @@ function DiagramCanvasContent({
 
   // Add a handler for critical path calculation
   const handleCalculateCriticalPath = useCallback(() => {
+    // Toggle the critical path display
+    const newShowCriticalPath = !showCriticalPath;
+    setShowCriticalPath(newShowCriticalPath);
+
     // Calculate critical path
     const { nodes: updatedNodes, edges: updatedEdges } = calculateCriticalPath(
       nodes,
@@ -489,13 +715,39 @@ function DiagramCanvasContent({
 
     // Apply the changes to both nodes and edges
     setNodes(updatedNodes);
-    setEdges(updatedEdges);
+
+    // Update edges with the new critical path toggle state
+    setEdges(
+      updatedEdges.map((edge) => {
+        if (edge.data?.isCritical) {
+          return {
+            ...edge,
+            style: {
+              ...edge.style,
+              stroke: newShowCriticalPath
+                ? "#ef4444"
+                : edge.data.hasCoDependency
+                  ? "#6366f1"
+                  : "#94a3b8",
+              strokeWidth: newShowCriticalPath
+                ? 3
+                : edge.data.hasCoDependency
+                  ? 2.5
+                  : 2,
+            },
+          };
+        }
+        return edge;
+      })
+    );
 
     // Show a message to the user
     alert(
-      "Critical path calculated. Edges on the critical path are highlighted in red."
+      newShowCriticalPath
+        ? "Critical path calculated and highlighted in red."
+        : "Critical path highlighting turned off."
     );
-  }, [nodes, edges, setNodes, setEdges, diagramType]);
+  }, [nodes, edges, setNodes, setEdges, diagramType, showCriticalPath]);
 
   return (
     <div className={cn("flex flex-col h-full relative", className)}>
@@ -532,6 +784,7 @@ function DiagramCanvasContent({
         edgeStyle={edgeStyle}
         setEdgeStyle={setEdgeStyle}
         onCalculateCriticalPath={handleCalculateCriticalPath}
+        showCriticalPath={showCriticalPath}
       />
 
       {showDummyMaker && diagramType === "AOA" && (
