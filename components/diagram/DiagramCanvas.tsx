@@ -105,6 +105,21 @@ function DiagramCanvasContent({
     setNodes,
   });
 
+  // Effect to synchronize all edges with advancedMode changes
+  useEffect(() => {
+    console.log(`DiagramCanvas - advancedMode changed to: ${advancedMode}`);
+    // Update all edges with the current advancedMode value
+    setEdges((eds) =>
+      eds.map((edge) => ({
+        ...edge,
+        data: {
+          ...edge.data,
+          advancedMode,
+        },
+      }))
+    );
+  }, [advancedMode, setEdges]);
+
   // Use the edge handling hook
   const { onConnect } = useEdgeHandling({
     mode,

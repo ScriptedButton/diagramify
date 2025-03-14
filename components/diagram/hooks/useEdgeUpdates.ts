@@ -18,9 +18,15 @@ export function useEdgeUpdates({
 }: UseEdgeUpdatesProps) {
   // Update edge labels when advanced mode changes
   useEffect(() => {
+    console.log(`useEdgeUpdates - advancedMode changed to: ${advancedMode}`);
+
     if (diagramType === "AOA") {
-      setEdges((eds) =>
-        eds.map((edge) => {
+      setEdges((eds) => {
+        console.log(
+          `Updating ${eds.length} edges with new advancedMode: ${advancedMode}`
+        );
+
+        return eds.map((edge) => {
           const data = edge.data as EdgeData;
           if (data?.activityId) {
             const duration = data.duration || 0;
@@ -29,6 +35,8 @@ export function useEdgeUpdates({
               ? `${data.activityId}(ES:${earlyStart},EF:${earlyStart + duration})`
               : `${data.activityId}(${duration})`;
 
+            console.log(`Edge ${edge.id} - new label: ${newLabel}`);
+
             return {
               ...edge,
               label: newLabel,
@@ -36,12 +44,13 @@ export function useEdgeUpdates({
               data: {
                 ...data,
                 label: newLabel,
+                advancedMode: advancedMode, // Ensure advancedMode is passed through the data
               },
             };
           }
           return edge;
-        })
-      );
+        });
+      });
     }
   }, [advancedMode, diagramType, setEdges]);
 

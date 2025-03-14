@@ -179,7 +179,7 @@ export function CircularNode({
       <div className="flex flex-col items-center py-1.5 w-full">
         {/* Event number - larger and more prominent */}
         <div
-          className="font-bold text-2xl mb-0.5 text-primary"
+          className="font-bold text-3xl text-primary"
           onDoubleClick={() =>
             handleStartEditing("eventNumber", nodeData.eventNumber)
           }
@@ -187,7 +187,7 @@ export function CircularNode({
           {isEditing === "eventNumber" ? (
             <input
               ref={inputRef}
-              className="w-12 text-center border-0 bg-transparent focus:outline-none"
+              className="w-16 text-center border-0 bg-transparent focus:outline-none"
               value={editValue}
               onChange={handleTextChange}
               onBlur={handleTextSave}

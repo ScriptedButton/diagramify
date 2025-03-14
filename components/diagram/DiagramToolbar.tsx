@@ -760,7 +760,10 @@ export function DiagramToolbar({
             <Switch
               id="advanced-mode"
               checked={advancedMode}
-              onCheckedChange={setAdvancedMode}
+              onCheckedChange={(checked) => {
+                console.log("Advanced Mode changing to:", checked);
+                setAdvancedMode(checked);
+              }}
             />
             <Label htmlFor="advanced-mode" className="text-sm">
               Advanced Mode

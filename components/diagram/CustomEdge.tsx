@@ -194,6 +194,12 @@ export function CustomEdge({
     // Return early if there's no data or hideLabel is true
     if (!data || data.hideLabel) return "";
 
+    console.log(`Advanced mode: ${data.advancedMode}`);
+
+    if (!data.advancedMode) {
+      return `${data.activityId} (${data.duration})`;
+    }
+
     // For debug, log what we're trying to format
     console.log(`Formatting edge label with data:`, data);
 
@@ -233,9 +239,9 @@ export function CustomEdge({
       result += `\n${data.duration} (${data.lateStart},${data.lateFinish})`;
 
       // Add slack information if available
-      if (data.slack !== undefined) {
-        result += ` S:${data.slack}`;
-      }
+      // if (data.slack !== undefined) {
+      //   result += ` S:${data.slack}`;
+      // }
     }
 
     return result;
