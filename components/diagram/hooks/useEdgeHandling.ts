@@ -16,7 +16,6 @@ export function useEdgeHandling({
   edges,
   setEdges,
   diagramType,
-  advancedMode,
   edgeStyle,
 }: UseEdgeHandlingProps) {
   const onConnect = useCallback(
@@ -87,7 +86,7 @@ export function useEdgeHandling({
         setEdges((eds) => eds.concat(newEdge));
       }
     },
-    [mode, setEdges, edges, diagramType, advancedMode, edgeStyle]
+    [mode, setEdges, edges, diagramType, edgeStyle]
   );
 
   return { onConnect };

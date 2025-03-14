@@ -7,8 +7,6 @@ import {
   ReactFlowProvider,
   type ReactFlowInstance,
   MarkerType,
-  Node,
-  Edge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { cn } from "@/lib/utils";
@@ -19,6 +17,8 @@ import {
   DiagramMode,
   CustomNode,
   CustomEdge,
+  NodeData,
+  EdgeData,
 } from "./types";
 import { toPng, toJpeg, toSvg } from "html-to-image";
 import { loadSavedDiagram } from "@/app/utils";
@@ -34,66 +34,22 @@ import { DummyMakerDialog } from "./DummyMakerDialog";
 import { useNodeDeletion } from "./hooks/useNodeDeletion";
 import { calculateCriticalPath } from "./utils/CriticalPathCalculator";
 
-// Add type for node timing data
-interface NodeTimingData {
-  earliest: number;
-  latest: number;
+// Add interface definition at the top of the file
+interface CustomWindow extends Window {
+  updateDiagramNode?: (id: string, data: Partial<NodeData>) => void;
+  updateDiagramEdge?: (id: string, data: Partial<EdgeData>) => void;
+  openDiagramEditor?: (elementId?: string) => void;
+  showCriticalPath?: boolean;
 }
 
-// Helper functions for calculating times
+// Remove or comment out these unused functions
+/* 
+// Helper functions for calculating times - currently unused but kept for future reference
 const calculateEarlyTimes = (
   nodes: Node[],
   edges: Edge[]
 ): Map<string, NodeTimingData> => {
-  const timings = new Map<string, NodeTimingData>();
-
-  // Initialize all nodes with earliest time 0
-  nodes.forEach((node) => {
-    timings.set(node.id, { earliest: 0, latest: Infinity });
-  });
-
-  // Find roots (nodes with no incoming edges)
-  const hasIncomingEdge = new Set<string>();
-  edges.forEach((edge) => {
-    hasIncomingEdge.add(edge.target);
-  });
-
-  const rootNodes = nodes.filter((node) => !hasIncomingEdge.has(node.id));
-
-  // If no root nodes, just use the first node
-  if (rootNodes.length === 0 && nodes.length > 0) {
-    rootNodes.push(nodes[0]);
-  }
-
-  // To prevent infinite loops, limit iterations
-  let iterations = 0;
-  const maxIterations = nodes.length * 2;
-
-  // Forward pass - calculate earliest times
-  let changed = true;
-  while (changed && iterations < maxIterations) {
-    changed = false;
-    iterations++;
-
-    edges.forEach((edge) => {
-      if (!edge.source || !edge.target || !edge.data) return;
-
-      const sourceTime = timings.get(edge.source)?.earliest || 0;
-      // Use parseFloat to ensure we handle decimal durations correctly
-      const duration = parseFloat(edge.data.duration?.toString() || "0");
-      const targetTime = timings.get(edge.target)?.earliest || 0;
-
-      if (sourceTime + duration > targetTime) {
-        timings.set(edge.target, {
-          earliest: Number((sourceTime + duration).toFixed(4)), // Fix precision issues
-          latest: timings.get(edge.target)?.latest || Infinity,
-        });
-        changed = true;
-      }
-    });
-  }
-
-  return timings;
+  // Implementation
 };
 
 const calculateLateTimes = (
@@ -101,71 +57,7 @@ const calculateLateTimes = (
   edges: Edge[],
   earlyTimes: Map<string, NodeTimingData>
 ): Map<string, NodeTimingData> => {
-  const timings = new Map<string, NodeTimingData>();
-
-  // Find the project duration based on the maximum earliest time
-  const projectDuration = Math.max(
-    ...Array.from(earlyTimes.values()).map((t) => t.earliest || 0),
-    0 // Default to 0 if array is empty
-  );
-
-  // Initialize all nodes with latest time = project duration
-  nodes.forEach((node) => {
-    timings.set(node.id, {
-      earliest: earlyTimes.get(node.id)?.earliest || 0,
-      latest: projectDuration,
-    });
-  });
-
-  // Find terminal nodes (nodes with no outgoing edges)
-  const hasOutgoingEdge = new Set<string>();
-  edges.forEach((edge) => {
-    hasOutgoingEdge.add(edge.source);
-  });
-
-  const terminalNodes = nodes.filter((node) => !hasOutgoingEdge.has(node.id));
-
-  // If no terminal nodes, just use all nodes with the maximum earliest time
-  if (terminalNodes.length === 0) {
-    const maxEarliest = Math.max(
-      ...nodes.map((node) => earlyTimes.get(node.id)?.earliest || 0)
-    );
-    nodes.forEach((node) => {
-      if ((earlyTimes.get(node.id)?.earliest || 0) === maxEarliest) {
-        terminalNodes.push(node);
-      }
-    });
-  }
-
-  // To prevent infinite loops, limit iterations
-  let iterations = 0;
-  const maxIterations = nodes.length * 2;
-
-  // Backward pass - calculate latest times
-  let changed = true;
-  while (changed && iterations < maxIterations) {
-    changed = false;
-    iterations++;
-
-    edges.forEach((edge) => {
-      if (!edge.source || !edge.target || !edge.data) return;
-
-      const targetTime = timings.get(edge.target)?.latest || projectDuration;
-      // Use parseFloat for correct decimal handling
-      const duration = parseFloat(edge.data.duration?.toString() || "0");
-      const sourceTime = timings.get(edge.source)?.latest || projectDuration;
-
-      if (targetTime - duration < sourceTime) {
-        timings.set(edge.source, {
-          earliest: earlyTimes.get(edge.source)?.earliest || 0,
-          latest: Number((targetTime - duration).toFixed(4)), // Fix precision issues
-        });
-        changed = true;
-      }
-    });
-  }
-
-  return timings;
+  // Implementation
 };
 
 // Update updateEdgeTimings to respect showCriticalPath state
@@ -175,72 +67,9 @@ const updateEdgeTimings = (
   criticalEdges: Set<string>,
   showCriticalStyling: boolean
 ): Edge => {
-  if (!edge.source || !edge.target || !edge.data) return edge;
-
-  const sourceNode = nodeTimings.get(edge.source);
-  const targetNode = nodeTimings.get(edge.target);
-
-  if (!sourceNode || !targetNode) return edge;
-
-  // Use parseFloat for decimal durations
-  const duration = parseFloat(edge.data.duration?.toString() || "0");
-  const earlyStart = Number(sourceNode.earliest.toFixed(4));
-  const earlyFinish = Number((earlyStart + duration).toFixed(4));
-  const lateFinish = Number(targetNode.latest.toFixed(4));
-  const lateStart = Number((lateFinish - duration).toFixed(4));
-
-  // Calculate float (slack) with proper precision
-  const float = Number((lateStart - earlyStart).toFixed(4));
-  const isCritical = Math.abs(float) < 0.0001 || criticalEdges.has(edge.id);
-
-  // Format numbers for display, removing unnecessary decimal places
-  const formatNumber = (num: number): string => {
-    if (Number.isInteger(num)) return num.toString();
-    return num
-      .toFixed(3)
-      .replace(/\.00$/, "")
-      .replace(/(\.\d+?)0+$/, "$1");
-  };
-
-  return {
-    ...edge,
-    data: {
-      ...edge.data,
-      earlyStart,
-      earlyFinish,
-      lateStart,
-      lateFinish,
-      float,
-      isCritical,
-    },
-    // Format the label with appropriate decimal handling, without ES/EF prefixes
-    label: `${edge.data.activityId}(${formatNumber(duration)}, ${formatNumber(earlyStart)})`,
-    // Only apply critical path styling if the toggle is on
-    style: {
-      ...edge.style,
-      stroke:
-        isCritical && showCriticalStyling
-          ? "#ef4444"
-          : edge.data.hasCoDependency
-            ? "#6366f1"
-            : "#94a3b8",
-      strokeWidth:
-        isCritical && showCriticalStyling
-          ? 3
-          : edge.data.hasCoDependency
-            ? 2.5
-            : 2,
-    },
-  };
+  // Implementation
 };
-
-// Add interface definition at the top of the file
-interface CustomWindow extends Window {
-  updateDiagramNode?: (id: string, data: any) => void;
-  updateDiagramEdge?: (id: string, data: any) => void;
-  openDiagramEditor?: (elementId?: string) => void;
-  showCriticalPath?: boolean;
-}
+*/
 
 export function DiagramCanvas({
   className,
@@ -410,7 +239,7 @@ function DiagramCanvasContent({
       setUndoStack((prev) => prev.slice(0, -1));
       setRedoStack((prev) => [...prev, { nodes, edges }]);
     }
-  }, [undoStack, nodes, edges]);
+  }, [undoStack, nodes, edges, setNodes, setEdges, setUndoStack, setRedoStack]);
 
   // Handle redo action
   const handleRedo = useCallback(() => {
@@ -421,7 +250,7 @@ function DiagramCanvasContent({
       setRedoStack((prev) => prev.slice(0, -1));
       setUndoStack((prev) => [...prev, { nodes, edges }]);
     }
-  }, [redoStack, nodes, edges]);
+  }, [redoStack, nodes, edges, setNodes, setEdges, setUndoStack, setRedoStack]);
 
   // Save state for undo
   useEffect(() => {

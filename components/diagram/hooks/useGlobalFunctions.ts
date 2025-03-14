@@ -3,8 +3,8 @@ import { Node, Edge } from "@xyflow/react";
 import { EdgeData, NodeData, CustomNode, CustomEdge } from "../types";
 
 interface CustomWindow extends Window {
-  updateDiagramNode?: (id: string, data: any) => void;
-  updateDiagramEdge?: (id: string, data: any) => void;
+  updateDiagramNode?: (id: string, data: Partial<NodeData>) => void;
+  updateDiagramEdge?: (id: string, data: Partial<EdgeData>) => void;
   exportDiagramAsJSON?: () => void;
   exportDiagramAsPNG?: () => void;
   exportDiagramAsSVG?: () => void;

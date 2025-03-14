@@ -66,8 +66,8 @@ export interface CustomNodeProps extends Omit<NodeProps, "data"> {
 }
 
 export interface CustomWindow extends Window {
-  updateDiagramNode?: (id: string, data: any) => void;
-  updateDiagramEdge?: (id: string, data: any) => void;
+  updateDiagramNode?: (id: string, data: Partial<NodeData>) => void;
+  updateDiagramEdge?: (id: string, data: Partial<EdgeData>) => void;
   openDiagramEditor?: (elementId?: string) => void;
   showCriticalPath?: boolean;
 }

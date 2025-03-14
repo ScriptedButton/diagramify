@@ -19,7 +19,6 @@ import {
   StopCircleIcon,
   PanelLeftIcon,
   MousePointerClick,
-  NetworkIcon,
   RouteIcon,
 } from "lucide-react";
 import { DiagramMode, CustomNode, CustomEdge } from "./types";
