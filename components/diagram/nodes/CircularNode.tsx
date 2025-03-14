@@ -74,6 +74,20 @@ export function CircularNode({
   const earliest = nodeData.earliest ?? 0;
   const slack = latest - earliest;
 
+  // For nodes with explicit timing values, calculate slack differently
+  const hasExplicitTimings =
+    nodeData.earlyStart !== undefined &&
+    nodeData.earlyFinish !== undefined &&
+    nodeData.lateStart !== undefined &&
+    nodeData.lateFinish !== undefined;
+
+  const calculatedSlack = hasExplicitTimings
+    ? (Number(nodeData.lateStart) || 0) - (Number(nodeData.earlyStart) || 0)
+    : slack;
+
+  // Only consider the node critical if slack is zero
+  const isOnCriticalPath = calculatedSlack === 0;
+
   // Render different node shapes
   const renderShapedNode = () => {
     // Base classes for the node
@@ -81,7 +95,7 @@ export function CircularNode({
       "flex items-center justify-center",
       "transition-all duration-200",
       "shadow-lg",
-      !nodeData.isStartEvent && !nodeData.isEndEvent && nodeData.isCritical
+      !nodeData.isStartEvent && !nodeData.isEndEvent && isOnCriticalPath
         ? "border-red-500 dark:border-red-500 border-2 bg-red-50 dark:bg-red-950/30"
         : "border-primary border bg-background",
       selected
@@ -131,7 +145,7 @@ export function CircularNode({
             baseClasses,
             "w-24 h-24 rounded-full",
             "border-2",
-            nodeData.isCritical ? "critical-node" : ""
+            isOnCriticalPath ? "critical-node" : ""
           )}
         >
           <div className="flex flex-col items-center justify-center w-full h-full">
@@ -184,91 +198,6 @@ export function CircularNode({
             nodeData.eventNumber
           )}
         </div>
-
-        {/* Timing information with better spacing */}
-        <div className="text-[10px] flex flex-col items-center gap-0.5 w-full">
-          {/* Early time */}
-          <div
-            className="flex items-center justify-center w-14 gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20"
-            onDoubleClick={() =>
-              handleStartEditing("earliest", nodeData.earliest)
-            }
-          >
-            <span className="font-medium text-blue-600 dark:text-blue-400">
-              E:
-            </span>
-            {isEditing === "earliest" ? (
-              <input
-                className="w-8 text-center border-0 bg-transparent focus:outline-none text-blue-700 dark:text-blue-300"
-                value={editValue}
-                onChange={handleTextChange}
-                onBlur={handleTextSave}
-                onKeyDown={(e) => e.key === "Enter" && handleTextSave()}
-                autoFocus
-              />
-            ) : (
-              <span className="text-blue-700 dark:text-blue-300">
-                {nodeData.earliest}
-              </span>
-            )}
-          </div>
-
-          {/* Late time */}
-          <div
-            className="flex items-center justify-center w-14 gap-1 px-1.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/20"
-            onDoubleClick={() => handleStartEditing("latest", nodeData.latest)}
-          >
-            <span className="font-medium text-purple-600 dark:text-purple-400">
-              L:
-            </span>
-            {isEditing === "latest" ? (
-              <input
-                className="w-8 text-center border-0 bg-transparent focus:outline-none text-purple-700 dark:text-purple-300"
-                value={editValue}
-                onChange={handleTextChange}
-                onBlur={handleTextSave}
-                onKeyDown={(e) => e.key === "Enter" && handleTextSave()}
-                autoFocus
-              />
-            ) : (
-              <span className="text-purple-700 dark:text-purple-300">
-                {nodeData.latest}
-              </span>
-            )}
-          </div>
-
-          {/* Float/Slack (if needed) */}
-          {slack >= 0 && (
-            <div
-              className={cn(
-                "flex items-center justify-center w-14 gap-1 px-1.5 py-0.5 rounded-full",
-                slack === 0
-                  ? "bg-red-50 dark:bg-red-900/30"
-                  : "bg-green-50 dark:bg-green-900/20"
-              )}
-            >
-              <span
-                className={cn(
-                  "font-medium",
-                  slack === 0
-                    ? "text-red-600 dark:text-red-400"
-                    : "text-green-600 dark:text-green-400"
-                )}
-              >
-                F:
-              </span>
-              <span
-                className={cn(
-                  slack === 0
-                    ? "text-red-700 dark:text-red-300 font-medium"
-                    : "text-green-700 dark:text-green-300"
-                )}
-              >
-                {slack}
-              </span>
-            </div>
-          )}
-        </div>
       </div>
     );
 
@@ -279,7 +208,7 @@ export function CircularNode({
           baseClasses,
           "w-24 h-24 rounded-full",
           "border-2",
-          nodeData.isCritical ? "critical-node" : ""
+          isOnCriticalPath ? "critical-node" : ""
         )}
         style={
           nodeData.isStartEvent || nodeData.isEndEvent ? customStyle : undefined

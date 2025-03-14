@@ -19,6 +19,7 @@ import {
   StopCircleIcon,
   PanelLeftIcon,
   MousePointerClick,
+  NetworkIcon,
 } from "lucide-react";
 import { DiagramMode, CustomNode, CustomEdge } from "./types";
 import { toPng, toSvg, toJpeg } from "html-to-image";
@@ -91,6 +92,7 @@ interface DiagramToolbarProps {
   onConvertNode?: (nodeId: string, type: "start" | "end" | "normal") => void;
   edgeStyle?: "bezier" | "straight" | "step";
   setEdgeStyle?: (style: "bezier" | "straight" | "step") => void;
+  onCalculateCriticalPath: () => void;
 }
 
 // New component for co-dependency guidance
@@ -198,6 +200,7 @@ export function DiagramToolbar({
   onConvertNode,
   edgeStyle = "bezier",
   setEdgeStyle,
+  onCalculateCriticalPath,
 }: DiagramToolbarProps) {
   const [jsonEditorOpen, setJsonEditorOpen] = useState(false);
 
@@ -860,6 +863,21 @@ export function DiagramToolbar({
             )}
           </Button>
         )}
+
+        {/* Critical Path Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8"
+              onClick={onCalculateCriticalPath}
+            >
+              <NetworkIcon className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Calculate Critical Path</TooltipContent>
+        </Tooltip>
 
         {/* Help Section */}
         <Sheet>

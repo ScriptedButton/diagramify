@@ -357,6 +357,13 @@ export const DiagramContent = memo(function DiagramContent({
                     Dummy Activity (No Duration)
                   </p>
                 </div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-8 h-0.5 bg-red-500"
+                    style={{ height: "3px" }}
+                  ></div>
+                  <p className="text-sm text-muted-foreground">Critical Path</p>
+                </div>
               </div>
             </CardContent>
           </Card>

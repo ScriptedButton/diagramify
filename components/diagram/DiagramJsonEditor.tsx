@@ -593,114 +593,275 @@ export function DiagramJsonEditor({
                             </div>
                           </AccordionTrigger>
                           <AccordionContent>
-                            <div className="grid grid-cols-2 gap-4 pt-2">
-                              <div>
-                                <Label htmlFor={`node-${index}-id`}>ID</Label>
-                                <Input
-                                  id={`node-${index}-id`}
-                                  value={node.id}
-                                  onChange={(e) =>
-                                    handleNodeChange(
-                                      index,
-                                      "id",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor={`node-${index}-type`}>
-                                  Type
-                                </Label>
-                                <Input
-                                  id={`node-${index}-type`}
-                                  value={node.type || ""}
-                                  onChange={(e) =>
-                                    handleNodeChange(
-                                      index,
-                                      "type",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
-                              </div>
-                              {node.data?.label !== undefined && (
-                                <div>
-                                  <Label htmlFor={`node-${index}-label`}>
-                                    Label
-                                  </Label>
-                                  <Input
-                                    id={`node-${index}-label`}
-                                    value={node.data.label}
-                                    onChange={(e) =>
-                                      handleNodeChange(
-                                        index,
-                                        "data.label",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="mt-1"
-                                  />
+                            <div className="space-y-4">
+                              {/* Node Identity Group */}
+                              <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                                <h4 className="text-sm font-medium mb-3">
+                                  Node Identity
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label htmlFor={`node-${index}-id`}>
+                                      ID
+                                    </Label>
+                                    <Input
+                                      id={`node-${index}-id`}
+                                      value={node.id}
+                                      onChange={(e) =>
+                                        handleNodeChange(
+                                          index,
+                                          "id",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor={`node-${index}-type`}>
+                                      Type
+                                    </Label>
+                                    <Input
+                                      id={`node-${index}-type`}
+                                      value={node.type || ""}
+                                      onChange={(e) =>
+                                        handleNodeChange(
+                                          index,
+                                          "type",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  {node.data?.label !== undefined && (
+                                    <div>
+                                      <Label htmlFor={`node-${index}-label`}>
+                                        Label
+                                      </Label>
+                                      <Input
+                                        id={`node-${index}-label`}
+                                        value={node.data.label}
+                                        onChange={(e) =>
+                                          handleNodeChange(
+                                            index,
+                                            "data.label",
+                                            e.target.value
+                                          )
+                                        }
+                                        className="mt-1"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
-                              )}
+                              </div>
+
+                              {/* Position Group */}
+                              <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                                <h4 className="text-sm font-medium mb-3">
+                                  Position
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label htmlFor={`node-${index}-x`}>
+                                      Position X
+                                    </Label>
+                                    <Input
+                                      id={`node-${index}-x`}
+                                      type="number"
+                                      value={node.position?.x || 0}
+                                      onChange={(e) =>
+                                        handleNodeChange(
+                                          index,
+                                          "position.x",
+                                          parseInt(e.target.value) || 0
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor={`node-${index}-y`}>
+                                      Position Y
+                                    </Label>
+                                    <Input
+                                      id={`node-${index}-y`}
+                                      type="number"
+                                      value={node.position?.y || 0}
+                                      onChange={(e) =>
+                                        handleNodeChange(
+                                          index,
+                                          "position.y",
+                                          parseInt(e.target.value) || 0
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Activity Properties (only if duration exists) */}
                               {node.data?.duration !== undefined && (
-                                <div>
-                                  <Label htmlFor={`node-${index}-duration`}>
-                                    Duration
-                                  </Label>
-                                  <Input
-                                    id={`node-${index}-duration`}
-                                    type="number"
-                                    value={node.data.duration}
-                                    onChange={(e) =>
-                                      handleNodeChange(
-                                        index,
-                                        "data.duration",
-                                        parseInt(e.target.value) || 0
-                                      )
-                                    }
-                                    className="mt-1"
-                                  />
+                                <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                                  <h4 className="text-sm font-medium mb-3">
+                                    Activity Properties
+                                  </h4>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <Label htmlFor={`node-${index}-duration`}>
+                                        Duration
+                                      </Label>
+                                      <Input
+                                        id={`node-${index}-duration`}
+                                        type="number"
+                                        value={node.data.duration}
+                                        onChange={(e) =>
+                                          handleNodeChange(
+                                            index,
+                                            "data.duration",
+                                            parseInt(e.target.value) || 0
+                                          )
+                                        }
+                                        className="mt-1"
+                                      />
+                                    </div>
+                                    {node.data?.isCritical !== undefined && (
+                                      <div className="flex items-center justify-between space-x-2">
+                                        <Label
+                                          htmlFor={`node-${index}-isCritical`}
+                                          className="cursor-pointer"
+                                        >
+                                          Critical Path
+                                        </Label>
+                                        <Switch
+                                          id={`node-${index}-isCritical`}
+                                          checked={Boolean(
+                                            node.data.isCritical
+                                          )}
+                                          onCheckedChange={(checked) =>
+                                            handleNodeChange(
+                                              index,
+                                              "data.isCritical",
+                                              checked
+                                            )
+                                          }
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               )}
-                              <div>
-                                <Label htmlFor={`node-${index}-x`}>
-                                  Position X
-                                </Label>
-                                <Input
-                                  id={`node-${index}-x`}
-                                  type="number"
-                                  value={node.position?.x || 0}
-                                  onChange={(e) =>
-                                    handleNodeChange(
-                                      index,
-                                      "position.x",
-                                      parseInt(e.target.value) || 0
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor={`node-${index}-y`}>
-                                  Position Y
-                                </Label>
-                                <Input
-                                  id={`node-${index}-y`}
-                                  type="number"
-                                  value={node.position?.y || 0}
-                                  onChange={(e) =>
-                                    handleNodeChange(
-                                      index,
-                                      "position.y",
-                                      parseInt(e.target.value) || 0
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
-                              </div>
+
+                              {/* Time Values (if they exist) */}
+                              {(node.data?.earlyStart !== undefined ||
+                                node.data?.earlyFinish !== undefined ||
+                                node.data?.lateStart !== undefined ||
+                                node.data?.lateFinish !== undefined) && (
+                                <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                                  <h4 className="text-sm font-medium mb-3">
+                                    Timing Values
+                                  </h4>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    {node.data?.earlyStart !== undefined && (
+                                      <div>
+                                        <Label
+                                          htmlFor={`node-${index}-earlyStart`}
+                                        >
+                                          Early Start
+                                        </Label>
+                                        <Input
+                                          id={`node-${index}-earlyStart`}
+                                          type="number"
+                                          value={Number(
+                                            node.data.earlyStart || 0
+                                          )}
+                                          onChange={(e) =>
+                                            handleNodeChange(
+                                              index,
+                                              "data.earlyStart",
+                                              parseInt(e.target.value) || 0
+                                            )
+                                          }
+                                          className="mt-1"
+                                        />
+                                      </div>
+                                    )}
+                                    {node.data?.earlyFinish !== undefined && (
+                                      <div>
+                                        <Label
+                                          htmlFor={`node-${index}-earlyFinish`}
+                                        >
+                                          Early Finish
+                                        </Label>
+                                        <Input
+                                          id={`node-${index}-earlyFinish`}
+                                          type="number"
+                                          value={Number(
+                                            node.data.earlyFinish || 0
+                                          )}
+                                          onChange={(e) =>
+                                            handleNodeChange(
+                                              index,
+                                              "data.earlyFinish",
+                                              parseInt(e.target.value) || 0
+                                            )
+                                          }
+                                          className="mt-1"
+                                        />
+                                      </div>
+                                    )}
+                                    {node.data?.lateStart !== undefined && (
+                                      <div>
+                                        <Label
+                                          htmlFor={`node-${index}-lateStart`}
+                                        >
+                                          Late Start
+                                        </Label>
+                                        <Input
+                                          id={`node-${index}-lateStart`}
+                                          type="number"
+                                          value={Number(
+                                            node.data.lateStart || 0
+                                          )}
+                                          onChange={(e) =>
+                                            handleNodeChange(
+                                              index,
+                                              "data.lateStart",
+                                              parseInt(e.target.value) || 0
+                                            )
+                                          }
+                                          className="mt-1"
+                                        />
+                                      </div>
+                                    )}
+                                    {node.data?.lateFinish !== undefined && (
+                                      <div>
+                                        <Label
+                                          htmlFor={`node-${index}-lateFinish`}
+                                        >
+                                          Late Finish
+                                        </Label>
+                                        <Input
+                                          id={`node-${index}-lateFinish`}
+                                          type="number"
+                                          value={Number(
+                                            node.data.lateFinish || 0
+                                          )}
+                                          onChange={(e) =>
+                                            handleNodeChange(
+                                              index,
+                                              "data.lateFinish",
+                                              parseInt(e.target.value) || 0
+                                            )
+                                          }
+                                          className="mt-1"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </AccordionContent>
                         </AccordionItem>
@@ -733,213 +894,318 @@ export function DiagramJsonEditor({
                             </div>
                           </AccordionTrigger>
                           <AccordionContent>
-                            <div className="grid grid-cols-2 gap-4 pt-2">
-                              <div>
-                                <Label htmlFor={`edge-${index}-id`}>ID</Label>
-                                <Input
-                                  id={`edge-${index}-id`}
-                                  value={edge.id}
-                                  onChange={(e) =>
-                                    handleEdgeChange(
-                                      index,
-                                      "id",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor={`edge-${index}-source`}>
-                                  Source
-                                </Label>
-                                <Input
-                                  id={`edge-${index}-source`}
-                                  value={edge.source}
-                                  onChange={(e) =>
-                                    handleEdgeChange(
-                                      index,
-                                      "source",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor={`edge-${index}-target`}>
-                                  Target
-                                </Label>
-                                <Input
-                                  id={`edge-${index}-target`}
-                                  value={edge.target}
-                                  onChange={(e) =>
-                                    handleEdgeChange(
-                                      index,
-                                      "target",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
-                              </div>
-                              {edge.data?.activityId !== undefined && (
-                                <div>
-                                  <Label htmlFor={`edge-${index}-activityId`}>
-                                    Activity ID
-                                  </Label>
-                                  <Input
-                                    id={`edge-${index}-activityId`}
-                                    value={edge.data.activityId}
-                                    onChange={(e) =>
-                                      handleEdgeChange(
-                                        index,
-                                        "data.activityId",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="mt-1"
-                                  />
-                                </div>
-                              )}
-                              {edge.data?.duration !== undefined && (
-                                <div>
-                                  <Label htmlFor={`edge-${index}-duration`}>
-                                    Duration
-                                  </Label>
-                                  <Input
-                                    id={`edge-${index}-duration`}
-                                    type="number"
-                                    value={edge.data.duration}
-                                    onChange={(e) =>
-                                      handleEdgeChange(
-                                        index,
-                                        "data.duration",
-                                        parseInt(e.target.value) || 0
-                                      )
-                                    }
-                                    className="mt-1"
-                                  />
-                                </div>
-                              )}
-                              <div className="col-span-2 grid grid-cols-2 gap-4">
-                                <div className="flex items-center justify-between space-x-2">
-                                  <Label htmlFor={`edge-${index}-hideLabel`}>
-                                    Hide Label
-                                  </Label>
-                                  <Switch
-                                    id={`edge-${index}-hideLabel`}
-                                    checked={
-                                      (edge.data?.hideLabel as boolean) ?? false
-                                    }
-                                    onCheckedChange={(checked) =>
-                                      handleEdgeChange(
-                                        index,
-                                        "data.hideLabel",
-                                        checked
-                                      )
-                                    }
-                                  />
-                                </div>
-                                <div className="flex items-center justify-between space-x-2">
-                                  <Label htmlFor={`edge-${index}-isDashed`}>
-                                    Dashed Line
-                                  </Label>
-                                  <Switch
-                                    id={`edge-${index}-isDashed`}
-                                    checked={
-                                      (edge.data?.isDashed as boolean) ?? false
-                                    }
-                                    onCheckedChange={(checked) =>
-                                      handleEdgeChange(
-                                        index,
-                                        "data.isDashed",
-                                        checked
-                                      )
-                                    }
-                                  />
-                                </div>
-                                <div className="flex items-center justify-between space-x-2">
-                                  <Label htmlFor={`edge-${index}-isCritical`}>
-                                    Critical Path
-                                  </Label>
-                                  <Switch
-                                    id={`edge-${index}-isCritical`}
-                                    checked={
-                                      (edge.data?.isCritical as boolean) ??
-                                      false
-                                    }
-                                    onCheckedChange={(checked) =>
-                                      handleEdgeChange(
-                                        index,
-                                        "data.isCritical",
-                                        checked
-                                      )
-                                    }
-                                  />
-                                </div>
-                                <div className="flex items-center justify-between space-x-2">
-                                  <Label
-                                    htmlFor={`edge-${index}-hasCoDependency`}
-                                  >
-                                    Co-dependent
-                                  </Label>
-                                  <Switch
-                                    id={`edge-${index}-hasCoDependency`}
-                                    checked={
-                                      (edge.data?.hasCoDependency as boolean) ??
-                                      false
-                                    }
-                                    onCheckedChange={(checked) =>
-                                      handleEdgeChange(
-                                        index,
-                                        "data.hasCoDependency",
-                                        checked
-                                      )
-                                    }
-                                  />
+                            <div className="space-y-4">
+                              {/* Edge Identity Group */}
+                              <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                                <h4 className="text-sm font-medium mb-3">
+                                  Edge Identity
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label htmlFor={`edge-${index}-id`}>
+                                      ID
+                                    </Label>
+                                    <Input
+                                      id={`edge-${index}-id`}
+                                      value={edge.id}
+                                      onChange={(e) =>
+                                        handleEdgeChange(
+                                          index,
+                                          "id",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor={`edge-${index}-activityId`}>
+                                      Activity ID
+                                    </Label>
+                                    <Input
+                                      id={`edge-${index}-activityId`}
+                                      value={edge.data?.activityId || ""}
+                                      onChange={(e) =>
+                                        handleEdgeChange(
+                                          index,
+                                          "data.activityId",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
                                 </div>
                               </div>
-                              {edge.data?.earlyStart !== undefined && (
-                                <div>
-                                  <Label htmlFor={`edge-${index}-earlyStart`}>
-                                    Early Start
-                                  </Label>
-                                  <Input
-                                    id={`edge-${index}-earlyStart`}
-                                    type="number"
-                                    value={edge.data.earlyStart}
-                                    onChange={(e) =>
-                                      handleEdgeChange(
-                                        index,
-                                        "data.earlyStart",
-                                        parseInt(e.target.value) || 0
-                                      )
-                                    }
-                                    className="mt-1"
-                                  />
+
+                              {/* Connection Group */}
+                              <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                                <h4 className="text-sm font-medium mb-3">
+                                  Connection
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label htmlFor={`edge-${index}-source`}>
+                                      Source
+                                    </Label>
+                                    <Input
+                                      id={`edge-${index}-source`}
+                                      value={edge.source}
+                                      onChange={(e) =>
+                                        handleEdgeChange(
+                                          index,
+                                          "source",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor={`edge-${index}-target`}>
+                                      Target
+                                    </Label>
+                                    <Input
+                                      id={`edge-${index}-target`}
+                                      value={edge.target}
+                                      onChange={(e) =>
+                                        handleEdgeChange(
+                                          index,
+                                          "target",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
                                 </div>
-                              )}
-                              {edge.data?.earlyFinish !== undefined && (
-                                <div>
-                                  <Label htmlFor={`edge-${index}-earlyFinish`}>
-                                    Early Finish
-                                  </Label>
-                                  <Input
-                                    id={`edge-${index}-earlyFinish`}
-                                    type="number"
-                                    value={edge.data.earlyFinish}
-                                    onChange={(e) =>
-                                      handleEdgeChange(
-                                        index,
-                                        "data.earlyFinish",
-                                        parseInt(e.target.value) || 0
-                                      )
-                                    }
-                                    className="mt-1"
-                                  />
+                              </div>
+
+                              {/* Activity Properties Group */}
+                              <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                                <h4 className="text-sm font-medium mb-3">
+                                  Activity Properties
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label htmlFor={`edge-${index}-duration`}>
+                                      Duration
+                                    </Label>
+                                    <Input
+                                      id={`edge-${index}-duration`}
+                                      type="number"
+                                      value={edge.data?.duration || 0}
+                                      onChange={(e) =>
+                                        handleEdgeChange(
+                                          index,
+                                          "data.duration",
+                                          parseInt(e.target.value) || 0
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  <div></div>
+                                  <div className="flex items-center justify-between space-x-2">
+                                    <Label
+                                      htmlFor={`edge-${index}-isCritical`}
+                                      className="cursor-pointer"
+                                    >
+                                      Critical Path
+                                    </Label>
+                                    <Switch
+                                      id={`edge-${index}-isCritical`}
+                                      checked={
+                                        (edge.data?.isCritical as boolean) ??
+                                        false
+                                      }
+                                      onCheckedChange={(checked) =>
+                                        handleEdgeChange(
+                                          index,
+                                          "data.isCritical",
+                                          checked
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                  <div className="flex items-center justify-between space-x-2">
+                                    <Label
+                                      htmlFor={`edge-${index}-hasCoDependency`}
+                                      className="cursor-pointer"
+                                    >
+                                      Co-dependent
+                                    </Label>
+                                    <Switch
+                                      id={`edge-${index}-hasCoDependency`}
+                                      checked={
+                                        (edge.data
+                                          ?.hasCoDependency as boolean) ?? false
+                                      }
+                                      onCheckedChange={(checked) =>
+                                        handleEdgeChange(
+                                          index,
+                                          "data.hasCoDependency",
+                                          checked
+                                        )
+                                      }
+                                    />
+                                  </div>
                                 </div>
-                              )}
+                              </div>
+
+                              {/* Visual Options Group */}
+                              <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                                <h4 className="text-sm font-medium mb-3">
+                                  Visual Options
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="flex items-center justify-between space-x-2">
+                                    <Label
+                                      htmlFor={`edge-${index}-hideLabel`}
+                                      className="cursor-pointer"
+                                    >
+                                      Hide Label
+                                    </Label>
+                                    <Switch
+                                      id={`edge-${index}-hideLabel`}
+                                      checked={
+                                        (edge.data?.hideLabel as boolean) ??
+                                        false
+                                      }
+                                      onCheckedChange={(checked) =>
+                                        handleEdgeChange(
+                                          index,
+                                          "data.hideLabel",
+                                          checked
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                  <div className="flex items-center justify-between space-x-2">
+                                    <Label
+                                      htmlFor={`edge-${index}-isDashed`}
+                                      className="cursor-pointer"
+                                    >
+                                      Dashed Line
+                                    </Label>
+                                    <Switch
+                                      id={`edge-${index}-isDashed`}
+                                      checked={
+                                        (edge.data?.isDashed as boolean) ??
+                                        false
+                                      }
+                                      onCheckedChange={(checked) =>
+                                        handleEdgeChange(
+                                          index,
+                                          "data.isDashed",
+                                          checked
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Time Values Group */}
+                              <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                                <h4 className="text-sm font-medium mb-3">
+                                  Timing Values
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label htmlFor={`edge-${index}-earlyStart`}>
+                                      Early Start
+                                    </Label>
+                                    <Input
+                                      id={`edge-${index}-earlyStart`}
+                                      type="number"
+                                      value={Number(edge.data?.earlyStart || 0)}
+                                      onChange={(e) =>
+                                        handleEdgeChange(
+                                          index,
+                                          "data.earlyStart",
+                                          parseInt(e.target.value) || 0
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label
+                                      htmlFor={`edge-${index}-earlyFinish`}
+                                    >
+                                      Early Finish
+                                    </Label>
+                                    <Input
+                                      id={`edge-${index}-earlyFinish`}
+                                      type="number"
+                                      value={Number(
+                                        edge.data?.earlyFinish || 0
+                                      )}
+                                      onChange={(e) =>
+                                        handleEdgeChange(
+                                          index,
+                                          "data.earlyFinish",
+                                          parseInt(e.target.value) || 0
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor={`edge-${index}-lateStart`}>
+                                      Late Start
+                                    </Label>
+                                    <Input
+                                      id={`edge-${index}-lateStart`}
+                                      type="number"
+                                      value={Number(edge.data?.lateStart || 0)}
+                                      onChange={(e) =>
+                                        handleEdgeChange(
+                                          index,
+                                          "data.lateStart",
+                                          parseInt(e.target.value) || 0
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor={`edge-${index}-lateFinish`}>
+                                      Late Finish
+                                    </Label>
+                                    <Input
+                                      id={`edge-${index}-lateFinish`}
+                                      type="number"
+                                      value={Number(edge.data?.lateFinish || 0)}
+                                      onChange={(e) =>
+                                        handleEdgeChange(
+                                          index,
+                                          "data.lateFinish",
+                                          parseInt(e.target.value) || 0
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  {edge.data?.slack !== undefined && (
+                                    <div className="col-span-2">
+                                      <div className="flex justify-between items-center">
+                                        <Label>Slack/Float</Label>
+                                        <Badge
+                                          variant={
+                                            edge.data.slack === 0
+                                              ? "destructive"
+                                              : "outline"
+                                          }
+                                        >
+                                          {edge.data.slack}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </AccordionContent>
                         </AccordionItem>
@@ -1078,108 +1344,269 @@ export function DiagramJsonEditor({
                           </div>
                         </AccordionTrigger>
                         <AccordionContent>
-                          <div className="grid grid-cols-2 gap-4 pt-2">
-                            <div>
-                              <Label htmlFor={`node-${index}-id`}>ID</Label>
-                              <Input
-                                id={`node-${index}-id`}
-                                value={node.id}
-                                onChange={(e) =>
-                                  handleNodeChange(index, "id", e.target.value)
-                                }
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor={`node-${index}-type`}>Type</Label>
-                              <Input
-                                id={`node-${index}-type`}
-                                value={node.type || ""}
-                                onChange={(e) =>
-                                  handleNodeChange(
-                                    index,
-                                    "type",
-                                    e.target.value
-                                  )
-                                }
-                                className="mt-1"
-                              />
-                            </div>
-                            {node.data?.label !== undefined && (
-                              <div>
-                                <Label htmlFor={`node-${index}-label`}>
-                                  Label
-                                </Label>
-                                <Input
-                                  id={`node-${index}-label`}
-                                  value={node.data.label}
-                                  onChange={(e) =>
-                                    handleNodeChange(
-                                      index,
-                                      "data.label",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
+                          <div className="space-y-4">
+                            {/* Node Identity Group */}
+                            <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                              <h4 className="text-sm font-medium mb-3">
+                                Node Identity
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor={`node-${index}-id`}>ID</Label>
+                                  <Input
+                                    id={`node-${index}-id`}
+                                    value={node.id}
+                                    onChange={(e) =>
+                                      handleNodeChange(
+                                        index,
+                                        "id",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor={`node-${index}-type`}>
+                                    Type
+                                  </Label>
+                                  <Input
+                                    id={`node-${index}-type`}
+                                    value={node.type || ""}
+                                    onChange={(e) =>
+                                      handleNodeChange(
+                                        index,
+                                        "type",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
+                                {node.data?.label !== undefined && (
+                                  <div>
+                                    <Label htmlFor={`node-${index}-label`}>
+                                      Label
+                                    </Label>
+                                    <Input
+                                      id={`node-${index}-label`}
+                                      value={node.data.label}
+                                      onChange={(e) =>
+                                        handleNodeChange(
+                                          index,
+                                          "data.label",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            </div>
+
+                            {/* Position Group */}
+                            <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                              <h4 className="text-sm font-medium mb-3">
+                                Position
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor={`node-${index}-x`}>
+                                    Position X
+                                  </Label>
+                                  <Input
+                                    id={`node-${index}-x`}
+                                    type="number"
+                                    value={node.position?.x || 0}
+                                    onChange={(e) =>
+                                      handleNodeChange(
+                                        index,
+                                        "position.x",
+                                        parseInt(e.target.value) || 0
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor={`node-${index}-y`}>
+                                    Position Y
+                                  </Label>
+                                  <Input
+                                    id={`node-${index}-y`}
+                                    type="number"
+                                    value={node.position?.y || 0}
+                                    onChange={(e) =>
+                                      handleNodeChange(
+                                        index,
+                                        "position.y",
+                                        parseInt(e.target.value) || 0
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Activity Properties (only if duration exists) */}
                             {node.data?.duration !== undefined && (
-                              <div>
-                                <Label htmlFor={`node-${index}-duration`}>
-                                  Duration
-                                </Label>
-                                <Input
-                                  id={`node-${index}-duration`}
-                                  type="number"
-                                  value={node.data.duration}
-                                  onChange={(e) =>
-                                    handleNodeChange(
-                                      index,
-                                      "data.duration",
-                                      parseInt(e.target.value) || 0
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
+                              <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                                <h4 className="text-sm font-medium mb-3">
+                                  Activity Properties
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label htmlFor={`node-${index}-duration`}>
+                                      Duration
+                                    </Label>
+                                    <Input
+                                      id={`node-${index}-duration`}
+                                      type="number"
+                                      value={node.data.duration}
+                                      onChange={(e) =>
+                                        handleNodeChange(
+                                          index,
+                                          "data.duration",
+                                          parseInt(e.target.value) || 0
+                                        )
+                                      }
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  {node.data?.isCritical !== undefined && (
+                                    <div className="flex items-center justify-between space-x-2">
+                                      <Label
+                                        htmlFor={`node-${index}-isCritical`}
+                                        className="cursor-pointer"
+                                      >
+                                        Critical Path
+                                      </Label>
+                                      <Switch
+                                        id={`node-${index}-isCritical`}
+                                        checked={Boolean(node.data.isCritical)}
+                                        onCheckedChange={(checked) =>
+                                          handleNodeChange(
+                                            index,
+                                            "data.isCritical",
+                                            checked
+                                          )
+                                        }
+                                      />
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
-                            <div>
-                              <Label htmlFor={`node-${index}-x`}>
-                                Position X
-                              </Label>
-                              <Input
-                                id={`node-${index}-x`}
-                                type="number"
-                                value={node.position?.x || 0}
-                                onChange={(e) =>
-                                  handleNodeChange(
-                                    index,
-                                    "position.x",
-                                    parseInt(e.target.value) || 0
-                                  )
-                                }
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor={`node-${index}-y`}>
-                                Position Y
-                              </Label>
-                              <Input
-                                id={`node-${index}-y`}
-                                type="number"
-                                value={node.position?.y || 0}
-                                onChange={(e) =>
-                                  handleNodeChange(
-                                    index,
-                                    "position.y",
-                                    parseInt(e.target.value) || 0
-                                  )
-                                }
-                                className="mt-1"
-                              />
-                            </div>
+
+                            {/* Time Values (if they exist) */}
+                            {(node.data?.earlyStart !== undefined ||
+                              node.data?.earlyFinish !== undefined ||
+                              node.data?.lateStart !== undefined ||
+                              node.data?.lateFinish !== undefined) && (
+                              <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                                <h4 className="text-sm font-medium mb-3">
+                                  Timing Values
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                  {node.data?.earlyStart !== undefined && (
+                                    <div>
+                                      <Label
+                                        htmlFor={`node-${index}-earlyStart`}
+                                      >
+                                        Early Start
+                                      </Label>
+                                      <Input
+                                        id={`node-${index}-earlyStart`}
+                                        type="number"
+                                        value={Number(
+                                          node.data.earlyStart || 0
+                                        )}
+                                        onChange={(e) =>
+                                          handleNodeChange(
+                                            index,
+                                            "data.earlyStart",
+                                            parseInt(e.target.value) || 0
+                                          )
+                                        }
+                                        className="mt-1"
+                                      />
+                                    </div>
+                                  )}
+                                  {node.data?.earlyFinish !== undefined && (
+                                    <div>
+                                      <Label
+                                        htmlFor={`node-${index}-earlyFinish`}
+                                      >
+                                        Early Finish
+                                      </Label>
+                                      <Input
+                                        id={`node-${index}-earlyFinish`}
+                                        type="number"
+                                        value={Number(
+                                          node.data.earlyFinish || 0
+                                        )}
+                                        onChange={(e) =>
+                                          handleNodeChange(
+                                            index,
+                                            "data.earlyFinish",
+                                            parseInt(e.target.value) || 0
+                                          )
+                                        }
+                                        className="mt-1"
+                                      />
+                                    </div>
+                                  )}
+                                  {node.data?.lateStart !== undefined && (
+                                    <div>
+                                      <Label
+                                        htmlFor={`node-${index}-lateStart`}
+                                      >
+                                        Late Start
+                                      </Label>
+                                      <Input
+                                        id={`node-${index}-lateStart`}
+                                        type="number"
+                                        value={Number(node.data.lateStart || 0)}
+                                        onChange={(e) =>
+                                          handleNodeChange(
+                                            index,
+                                            "data.lateStart",
+                                            parseInt(e.target.value) || 0
+                                          )
+                                        }
+                                        className="mt-1"
+                                      />
+                                    </div>
+                                  )}
+                                  {node.data?.lateFinish !== undefined && (
+                                    <div>
+                                      <Label
+                                        htmlFor={`node-${index}-lateFinish`}
+                                      >
+                                        Late Finish
+                                      </Label>
+                                      <Input
+                                        id={`node-${index}-lateFinish`}
+                                        type="number"
+                                        value={Number(
+                                          node.data.lateFinish || 0
+                                        )}
+                                        onChange={(e) =>
+                                          handleNodeChange(
+                                            index,
+                                            "data.lateFinish",
+                                            parseInt(e.target.value) || 0
+                                          )
+                                        }
+                                        className="mt-1"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </AccordionContent>
                       </AccordionItem>
@@ -1212,208 +1639,310 @@ export function DiagramJsonEditor({
                           </div>
                         </AccordionTrigger>
                         <AccordionContent>
-                          <div className="grid grid-cols-2 gap-4 pt-2">
-                            <div>
-                              <Label htmlFor={`edge-${index}-id`}>ID</Label>
-                              <Input
-                                id={`edge-${index}-id`}
-                                value={edge.id}
-                                onChange={(e) =>
-                                  handleEdgeChange(index, "id", e.target.value)
-                                }
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor={`edge-${index}-source`}>
-                                Source
-                              </Label>
-                              <Input
-                                id={`edge-${index}-source`}
-                                value={edge.source}
-                                onChange={(e) =>
-                                  handleEdgeChange(
-                                    index,
-                                    "source",
-                                    e.target.value
-                                  )
-                                }
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor={`edge-${index}-target`}>
-                                Target
-                              </Label>
-                              <Input
-                                id={`edge-${index}-target`}
-                                value={edge.target}
-                                onChange={(e) =>
-                                  handleEdgeChange(
-                                    index,
-                                    "target",
-                                    e.target.value
-                                  )
-                                }
-                                className="mt-1"
-                              />
-                            </div>
-                            {edge.data?.activityId !== undefined && (
-                              <div>
-                                <Label htmlFor={`edge-${index}-activityId`}>
-                                  Activity ID
-                                </Label>
-                                <Input
-                                  id={`edge-${index}-activityId`}
-                                  value={edge.data.activityId}
-                                  onChange={(e) =>
-                                    handleEdgeChange(
-                                      index,
-                                      "data.activityId",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
-                              </div>
-                            )}
-                            {edge.data?.duration !== undefined && (
-                              <div>
-                                <Label htmlFor={`edge-${index}-duration`}>
-                                  Duration
-                                </Label>
-                                <Input
-                                  id={`edge-${index}-duration`}
-                                  type="number"
-                                  value={edge.data.duration}
-                                  onChange={(e) =>
-                                    handleEdgeChange(
-                                      index,
-                                      "data.duration",
-                                      parseInt(e.target.value) || 0
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
-                              </div>
-                            )}
-                            <div className="col-span-2 grid grid-cols-2 gap-4">
-                              <div className="flex items-center justify-between space-x-2">
-                                <Label htmlFor={`edge-${index}-hideLabel`}>
-                                  Hide Label
-                                </Label>
-                                <Switch
-                                  id={`edge-${index}-hideLabel`}
-                                  checked={
-                                    (edge.data?.hideLabel as boolean) ?? false
-                                  }
-                                  onCheckedChange={(checked) =>
-                                    handleEdgeChange(
-                                      index,
-                                      "data.hideLabel",
-                                      checked
-                                    )
-                                  }
-                                />
-                              </div>
-                              <div className="flex items-center justify-between space-x-2">
-                                <Label htmlFor={`edge-${index}-isDashed`}>
-                                  Dashed Line
-                                </Label>
-                                <Switch
-                                  id={`edge-${index}-isDashed`}
-                                  checked={
-                                    (edge.data?.isDashed as boolean) ?? false
-                                  }
-                                  onCheckedChange={(checked) =>
-                                    handleEdgeChange(
-                                      index,
-                                      "data.isDashed",
-                                      checked
-                                    )
-                                  }
-                                />
-                              </div>
-                              <div className="flex items-center justify-between space-x-2">
-                                <Label htmlFor={`edge-${index}-isCritical`}>
-                                  Critical Path
-                                </Label>
-                                <Switch
-                                  id={`edge-${index}-isCritical`}
-                                  checked={
-                                    (edge.data?.isCritical as boolean) ?? false
-                                  }
-                                  onCheckedChange={(checked) =>
-                                    handleEdgeChange(
-                                      index,
-                                      "data.isCritical",
-                                      checked
-                                    )
-                                  }
-                                />
-                              </div>
-                              <div className="flex items-center justify-between space-x-2">
-                                <Label
-                                  htmlFor={`edge-${index}-hasCoDependency`}
-                                >
-                                  Co-dependent
-                                </Label>
-                                <Switch
-                                  id={`edge-${index}-hasCoDependency`}
-                                  checked={
-                                    (edge.data?.hasCoDependency as boolean) ??
-                                    false
-                                  }
-                                  onCheckedChange={(checked) =>
-                                    handleEdgeChange(
-                                      index,
-                                      "data.hasCoDependency",
-                                      checked
-                                    )
-                                  }
-                                />
+                          <div className="space-y-4">
+                            {/* Edge Identity Group */}
+                            <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                              <h4 className="text-sm font-medium mb-3">
+                                Edge Identity
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor={`edge-${index}-id`}>ID</Label>
+                                  <Input
+                                    id={`edge-${index}-id`}
+                                    value={edge.id}
+                                    onChange={(e) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "id",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor={`edge-${index}-activityId`}>
+                                    Activity ID
+                                  </Label>
+                                  <Input
+                                    id={`edge-${index}-activityId`}
+                                    value={edge.data?.activityId || ""}
+                                    onChange={(e) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.activityId",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
                               </div>
                             </div>
-                            {edge.data?.earlyStart !== undefined && (
-                              <div>
-                                <Label htmlFor={`edge-${index}-earlyStart`}>
-                                  Early Start
-                                </Label>
-                                <Input
-                                  id={`edge-${index}-earlyStart`}
-                                  type="number"
-                                  value={edge.data.earlyStart}
-                                  onChange={(e) =>
-                                    handleEdgeChange(
-                                      index,
-                                      "data.earlyStart",
-                                      parseInt(e.target.value) || 0
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
+
+                            {/* Connection Group */}
+                            <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                              <h4 className="text-sm font-medium mb-3">
+                                Connection
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor={`edge-${index}-source`}>
+                                    Source
+                                  </Label>
+                                  <Input
+                                    id={`edge-${index}-source`}
+                                    value={edge.source}
+                                    onChange={(e) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "source",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor={`edge-${index}-target`}>
+                                    Target
+                                  </Label>
+                                  <Input
+                                    id={`edge-${index}-target`}
+                                    value={edge.target}
+                                    onChange={(e) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "target",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
                               </div>
-                            )}
-                            {edge.data?.earlyFinish !== undefined && (
-                              <div>
-                                <Label htmlFor={`edge-${index}-earlyFinish`}>
-                                  Early Finish
-                                </Label>
-                                <Input
-                                  id={`edge-${index}-earlyFinish`}
-                                  type="number"
-                                  value={edge.data.earlyFinish}
-                                  onChange={(e) =>
-                                    handleEdgeChange(
-                                      index,
-                                      "data.earlyFinish",
-                                      parseInt(e.target.value) || 0
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
+                            </div>
+
+                            {/* Activity Properties Group */}
+                            <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                              <h4 className="text-sm font-medium mb-3">
+                                Activity Properties
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor={`edge-${index}-duration`}>
+                                    Duration
+                                  </Label>
+                                  <Input
+                                    id={`edge-${index}-duration`}
+                                    type="number"
+                                    value={edge.data?.duration || 0}
+                                    onChange={(e) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.duration",
+                                        parseInt(e.target.value) || 0
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div></div>
+                                <div className="flex items-center justify-between space-x-2">
+                                  <Label
+                                    htmlFor={`edge-${index}-isCritical`}
+                                    className="cursor-pointer"
+                                  >
+                                    Critical Path
+                                  </Label>
+                                  <Switch
+                                    id={`edge-${index}-isCritical`}
+                                    checked={
+                                      (edge.data?.isCritical as boolean) ??
+                                      false
+                                    }
+                                    onCheckedChange={(checked) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.isCritical",
+                                        checked
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div className="flex items-center justify-between space-x-2">
+                                  <Label
+                                    htmlFor={`edge-${index}-hasCoDependency`}
+                                    className="cursor-pointer"
+                                  >
+                                    Co-dependent
+                                  </Label>
+                                  <Switch
+                                    id={`edge-${index}-hasCoDependency`}
+                                    checked={
+                                      (edge.data?.hasCoDependency as boolean) ??
+                                      false
+                                    }
+                                    onCheckedChange={(checked) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.hasCoDependency",
+                                        checked
+                                      )
+                                    }
+                                  />
+                                </div>
                               </div>
-                            )}
+                            </div>
+
+                            {/* Visual Options Group */}
+                            <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                              <h4 className="text-sm font-medium mb-3">
+                                Visual Options
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="flex items-center justify-between space-x-2">
+                                  <Label
+                                    htmlFor={`edge-${index}-hideLabel`}
+                                    className="cursor-pointer"
+                                  >
+                                    Hide Label
+                                  </Label>
+                                  <Switch
+                                    id={`edge-${index}-hideLabel`}
+                                    checked={
+                                      (edge.data?.hideLabel as boolean) ?? false
+                                    }
+                                    onCheckedChange={(checked) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.hideLabel",
+                                        checked
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div className="flex items-center justify-between space-x-2">
+                                  <Label
+                                    htmlFor={`edge-${index}-isDashed`}
+                                    className="cursor-pointer"
+                                  >
+                                    Dashed Line
+                                  </Label>
+                                  <Switch
+                                    id={`edge-${index}-isDashed`}
+                                    checked={
+                                      (edge.data?.isDashed as boolean) ?? false
+                                    }
+                                    onCheckedChange={(checked) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.isDashed",
+                                        checked
+                                      )
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Time Values Group */}
+                            <div className="border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+                              <h4 className="text-sm font-medium mb-3">
+                                Timing Values
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor={`edge-${index}-earlyStart`}>
+                                    Early Start
+                                  </Label>
+                                  <Input
+                                    id={`edge-${index}-earlyStart`}
+                                    type="number"
+                                    value={Number(edge.data?.earlyStart || 0)}
+                                    onChange={(e) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.earlyStart",
+                                        parseInt(e.target.value) || 0
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor={`edge-${index}-earlyFinish`}>
+                                    Early Finish
+                                  </Label>
+                                  <Input
+                                    id={`edge-${index}-earlyFinish`}
+                                    type="number"
+                                    value={Number(edge.data?.earlyFinish || 0)}
+                                    onChange={(e) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.earlyFinish",
+                                        parseInt(e.target.value) || 0
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor={`edge-${index}-lateStart`}>
+                                    Late Start
+                                  </Label>
+                                  <Input
+                                    id={`edge-${index}-lateStart`}
+                                    type="number"
+                                    value={Number(edge.data?.lateStart || 0)}
+                                    onChange={(e) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.lateStart",
+                                        parseInt(e.target.value) || 0
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor={`edge-${index}-lateFinish`}>
+                                    Late Finish
+                                  </Label>
+                                  <Input
+                                    id={`edge-${index}-lateFinish`}
+                                    type="number"
+                                    value={Number(edge.data?.lateFinish || 0)}
+                                    onChange={(e) =>
+                                      handleEdgeChange(
+                                        index,
+                                        "data.lateFinish",
+                                        parseInt(e.target.value) || 0
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
+                                {edge.data?.slack !== undefined && (
+                                  <div className="col-span-2">
+                                    <div className="flex justify-between items-center">
+                                      <Label>Slack/Float</Label>
+                                      <Badge
+                                        variant={
+                                          edge.data.slack === 0
+                                            ? "destructive"
+                                            : "outline"
+                                        }
+                                      >
+                                        {edge.data.slack}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </AccordionContent>
                       </AccordionItem>

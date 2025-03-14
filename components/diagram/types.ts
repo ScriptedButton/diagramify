@@ -8,15 +8,19 @@ export interface DiagramCanvasProps {
 export interface EdgeData extends Record<string, unknown> {
   activityId?: string;
   duration?: number;
+  label?: string;
   earlyStart?: number;
   earlyFinish?: number;
   lateStart?: number;
   lateFinish?: number;
-  label?: string;
+  slack?: number;
+  isCritical?: boolean;
+  hideLabel?: boolean;
+  isDashed?: boolean;
+  isBidirectional?: boolean;
+  dependsOn?: string[];
   isDummy?: boolean;
   hasCoDependency?: boolean;
-  dependsOn?: string[];
-  edgeType?: string;
   weight?: number;
   [key: string]: unknown;
 }

@@ -30,6 +30,7 @@ import { useEdgeUpdates } from "./hooks/useEdgeUpdates";
 import { useGlobalFunctions } from "./hooks/useGlobalFunctions";
 import { DummyMakerDialog } from "./DummyMakerDialog";
 import { useNodeDeletion } from "./hooks/useNodeDeletion";
+import { calculateCriticalPath } from "./utils/CriticalPathCalculator";
 
 export function DiagramCanvas({
   className,
@@ -461,6 +462,26 @@ function DiagramCanvasContent({
     edgeStyle: "bezier",
     setEdges: setEdges,
   });
+
+  // Add a handler for critical path calculation
+  const handleCalculateCriticalPath = useCallback(() => {
+    // Calculate critical path
+    const { nodes: updatedNodes, edges: updatedEdges } = calculateCriticalPath(
+      nodes,
+      edges,
+      diagramType as "AOA" | "AON"
+    );
+
+    // Apply the changes to both nodes and edges
+    setNodes(updatedNodes);
+    setEdges(updatedEdges);
+
+    // Show a message to the user
+    alert(
+      "Critical path calculated. Edges on the critical path are highlighted in red."
+    );
+  }, [nodes, edges, setNodes, setEdges, diagramType]);
+
   return (
     <div className={cn("flex flex-col h-full relative", className)}>
       <DiagramToolbar
@@ -495,6 +516,7 @@ function DiagramCanvasContent({
         onConvertNode={handleNodeConversion}
         edgeStyle={edgeStyle}
         setEdgeStyle={setEdgeStyle}
+        onCalculateCriticalPath={handleCalculateCriticalPath}
       />
 
       {showDummyMaker && diagramType === "AOA" && (
