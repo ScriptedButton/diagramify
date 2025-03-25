@@ -17,6 +17,8 @@ import {
   DiagramMode,
   CustomNode,
   CustomEdge,
+  NodeData,
+  EdgeData,
 } from "./types";
 import { toPng, toJpeg, toSvg } from "html-to-image";
 import { loadSavedDiagram } from "@/app/utils";
@@ -31,6 +33,43 @@ import { useGlobalFunctions } from "./hooks/useGlobalFunctions";
 import { DummyMakerDialog } from "./DummyMakerDialog";
 import { useNodeDeletion } from "./hooks/useNodeDeletion";
 import { calculateCriticalPath } from "./utils/CriticalPathCalculator";
+
+// Add interface definition at the top of the file
+interface CustomWindow extends Window {
+  updateDiagramNode?: (id: string, data: Partial<NodeData>) => void;
+  updateDiagramEdge?: (id: string, data: Partial<EdgeData>) => void;
+  openDiagramEditor?: (elementId?: string) => void;
+  showCriticalPath?: boolean;
+}
+
+// Remove or comment out these unused functions
+/* 
+// Helper functions for calculating times - currently unused but kept for future reference
+const calculateEarlyTimes = (
+  nodes: Node[],
+  edges: Edge[]
+): Map<string, NodeTimingData> => {
+  // Implementation
+};
+
+const calculateLateTimes = (
+  nodes: Node[],
+  edges: Edge[],
+  earlyTimes: Map<string, NodeTimingData>
+): Map<string, NodeTimingData> => {
+  // Implementation
+};
+
+// Update updateEdgeTimings to respect showCriticalPath state
+const updateEdgeTimings = (
+  edge: Edge,
+  nodeTimings: Map<string, NodeTimingData>,
+  criticalEdges: Set<string>,
+  showCriticalStyling: boolean
+): Edge => {
+  // Implementation
+};
+*/
 
 export function DiagramCanvas({
   className,
@@ -68,6 +107,8 @@ function DiagramCanvasContent({
   );
   const [dummyDuration, setDummyDuration] = useState<number>(0);
   const [connectToEndNode, setConnectToEndNode] = useState(false);
+  // Add state for tracking critical path styling toggle
+  const [showCriticalPath, setShowCriticalPath] = useState(false);
 
   // Update state management for undo/redo with proper typing
   const [undoStack, setUndoStack] = useState<
@@ -104,6 +145,21 @@ function DiagramCanvasContent({
     nodes,
     setNodes,
   });
+
+  // Effect to synchronize all edges with advancedMode changes
+  useEffect(() => {
+    console.log(`DiagramCanvas - advancedMode changed to: ${advancedMode}`);
+    // Update all edges with the current advancedMode value
+    setEdges((eds) =>
+      eds.map((edge) => ({
+        ...edge,
+        data: {
+          ...edge.data,
+          advancedMode,
+        },
+      }))
+    );
+  }, [advancedMode, setEdges]);
 
   // Use the edge handling hook
   const { onConnect } = useEdgeHandling({
@@ -156,7 +212,17 @@ function DiagramCanvasContent({
       return newEdges;
     },
     updateEdgeData,
+    showCriticalPath,
   });
+
+  // Update the effect that uses window.showCriticalPath
+  useEffect(() => {
+    // Update the global window property to match our state
+    const customWindow = window as unknown as CustomWindow;
+    if (customWindow.showCriticalPath !== undefined) {
+      customWindow.showCriticalPath = showCriticalPath;
+    }
+  }, [showCriticalPath]);
 
   // Update undo/redo state
   useEffect(() => {
@@ -173,7 +239,7 @@ function DiagramCanvasContent({
       setUndoStack((prev) => prev.slice(0, -1));
       setRedoStack((prev) => [...prev, { nodes, edges }]);
     }
-  }, [undoStack, nodes, edges]);
+  }, [undoStack, nodes, edges, setNodes, setEdges, setUndoStack, setRedoStack]);
 
   // Handle redo action
   const handleRedo = useCallback(() => {
@@ -184,7 +250,7 @@ function DiagramCanvasContent({
       setRedoStack((prev) => prev.slice(0, -1));
       setUndoStack((prev) => [...prev, { nodes, edges }]);
     }
-  }, [redoStack, nodes, edges]);
+  }, [redoStack, nodes, edges, setNodes, setEdges, setUndoStack, setRedoStack]);
 
   // Save state for undo
   useEffect(() => {
@@ -465,6 +531,10 @@ function DiagramCanvasContent({
 
   // Add a handler for critical path calculation
   const handleCalculateCriticalPath = useCallback(() => {
+    // Toggle the critical path display
+    const newShowCriticalPath = !showCriticalPath;
+    setShowCriticalPath(newShowCriticalPath);
+
     // Calculate critical path
     const { nodes: updatedNodes, edges: updatedEdges } = calculateCriticalPath(
       nodes,
@@ -474,13 +544,39 @@ function DiagramCanvasContent({
 
     // Apply the changes to both nodes and edges
     setNodes(updatedNodes);
-    setEdges(updatedEdges);
+
+    // Update edges with the new critical path toggle state
+    setEdges(
+      updatedEdges.map((edge) => {
+        if (edge.data?.isCritical) {
+          return {
+            ...edge,
+            style: {
+              ...edge.style,
+              stroke: newShowCriticalPath
+                ? "#ef4444"
+                : edge.data.hasCoDependency
+                  ? "#6366f1"
+                  : "#94a3b8",
+              strokeWidth: newShowCriticalPath
+                ? 3
+                : edge.data.hasCoDependency
+                  ? 2.5
+                  : 2,
+            },
+          };
+        }
+        return edge;
+      })
+    );
 
     // Show a message to the user
     alert(
-      "Critical path calculated. Edges on the critical path are highlighted in red."
+      newShowCriticalPath
+        ? "Critical path calculated and highlighted in red."
+        : "Critical path highlighting turned off."
     );
-  }, [nodes, edges, setNodes, setEdges, diagramType]);
+  }, [nodes, edges, setNodes, setEdges, diagramType, showCriticalPath]);
 
   return (
     <div className={cn("flex flex-col h-full relative", className)}>
@@ -517,6 +613,7 @@ function DiagramCanvasContent({
         edgeStyle={edgeStyle}
         setEdgeStyle={setEdgeStyle}
         onCalculateCriticalPath={handleCalculateCriticalPath}
+        showCriticalPath={showCriticalPath}
       />
 
       {showDummyMaker && diagramType === "AOA" && (

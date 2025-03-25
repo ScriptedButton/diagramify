@@ -19,7 +19,7 @@ import {
   StopCircleIcon,
   PanelLeftIcon,
   MousePointerClick,
-  NetworkIcon,
+  RouteIcon,
 } from "lucide-react";
 import { DiagramMode, CustomNode, CustomEdge } from "./types";
 import { toPng, toSvg, toJpeg } from "html-to-image";
@@ -93,6 +93,7 @@ interface DiagramToolbarProps {
   edgeStyle?: "bezier" | "straight" | "step";
   setEdgeStyle?: (style: "bezier" | "straight" | "step") => void;
   onCalculateCriticalPath: () => void;
+  showCriticalPath?: boolean;
 }
 
 // New component for co-dependency guidance
@@ -201,6 +202,7 @@ export function DiagramToolbar({
   edgeStyle = "bezier",
   setEdgeStyle,
   onCalculateCriticalPath,
+  showCriticalPath,
 }: DiagramToolbarProps) {
   const [jsonEditorOpen, setJsonEditorOpen] = useState(false);
 
@@ -760,7 +762,10 @@ export function DiagramToolbar({
             <Switch
               id="advanced-mode"
               checked={advancedMode}
-              onCheckedChange={setAdvancedMode}
+              onCheckedChange={(checked) => {
+                console.log("Advanced Mode changing to:", checked);
+                setAdvancedMode(checked);
+              }}
             />
             <Label htmlFor="advanced-mode" className="text-sm">
               Advanced Mode
@@ -869,14 +874,24 @@ export function DiagramToolbar({
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               className="h-8 w-8"
               onClick={onCalculateCriticalPath}
+              title={
+                showCriticalPath ? "Hide Critical Path" : "Show Critical Path"
+              }
             >
-              <NetworkIcon className="h-4 w-4" />
+              <RouteIcon
+                className={cn(
+                  "h-5 w-5",
+                  showCriticalPath ? "text-red-500" : ""
+                )}
+              />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Calculate Critical Path</TooltipContent>
+          <TooltipContent side="bottom">
+            {showCriticalPath ? "Hide Critical Path" : "Show Critical Path"}
+          </TooltipContent>
         </Tooltip>
 
         {/* Help Section */}
