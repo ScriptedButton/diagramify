@@ -1,19 +1,43 @@
 "use client";
 
-import { useState } from "react";
-import { DiagramCanvas } from "@/components/diagram/DiagramCanvas";
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const tools = {
+  aoa: {
+    title: "AOA Diagrams",
+    description:
+      "Create and analyze Activity-on-Arrow network diagrams for project planning",
+    href: "/diagram",
+  },
+  earnedValue: {
+    title: "Earned Value Analysis",
+    description:
+      "Calculate and track project performance metrics including CPI, SPI, and variance analysis",
+    href: "/earned-value",
+  },
+} as const;
 
 export default function Home() {
-  const [diagramType] = useState<"AOA" | "AON">("AOA");
-
   return (
-    <div className="flex flex-col h-screen">
-      <header className="border-b p-4 bg-background flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-center">Diagramify</h1>
-      </header>
-
-      <main className="flex-1 overflow-hidden">
-        <DiagramCanvas className="h-full" diagramType={diagramType} />
+    <div className="min-h-screen bg-background">
+      <main className="container mx-auto p-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Object.entries(tools).map(([key, tool]) => (
+            <Link key={key} href={tool.href}>
+              <Card className="h-full hover:bg-primary/5 transition-colors cursor-pointer">
+                <CardHeader>
+                  <CardTitle>{tool.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    {tool.description}
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
       </main>
     </div>
   );
