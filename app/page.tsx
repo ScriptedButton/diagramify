@@ -14,7 +14,7 @@ const tools = {
     title: "Earned Value Analysis",
     description:
       "Calculate and track project performance metrics including CPI, SPI, and variance analysis",
-    href: "/earned-value",
+    href: "/ev",
   },
 } as const;
 
