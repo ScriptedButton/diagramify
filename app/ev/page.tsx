@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Iteration {
   id: number;
@@ -36,6 +37,21 @@ interface DetailedCalculations {
   bac: string;
   etc: string;
   eac: string;
+}
+
+interface AlgebraicState {
+  pv: string;
+  ev: string;
+  ac: string;
+  sv: string;
+  cv: string;
+  cpi: string;
+  spi: string;
+  bac: string;
+  etc: string;
+  eac: string;
+  solveFor: string;
+  calculatedValues: Record<string, number>;
 }
 
 export default function EarnedValueAnalysis() {
@@ -74,6 +90,21 @@ export default function EarnedValueAnalysis() {
     etc: 0,
     eac: 0,
     tcpi: 0,
+  });
+
+  const [algebraicState, setAlgebraicState] = useState<AlgebraicState>({
+    pv: "",
+    ev: "",
+    ac: "",
+    sv: "",
+    cv: "",
+    cpi: "",
+    spi: "",
+    bac: "",
+    etc: "",
+    eac: "",
+    solveFor: "none",
+    calculatedValues: {}
   });
 
   const addIteration = () => {
@@ -229,6 +260,282 @@ export default function EarnedValueAnalysis() {
     }
   };
 
+  const roundToTwo = (num: number): number => {
+    return Math.round((num + Number.EPSILON) * 100) / 100;
+  };
+
+  const solveMetric = (metric: string, values: Record<string, number>): { result: number; formula: string } | null => {
+    let result = 0;
+    let formula = "";
+
+    switch (metric) {
+      case "pv":
+        if (values.ev && values.sv) {
+          result = roundToTwo(values.ev - values.sv);
+          formula = `PV = EV - SV = ${values.ev} - ${values.sv} = ${result}`;
+        } else if (values.ev && values.spi) {
+          result = roundToTwo(values.ev / values.spi);
+          formula = `PV = EV / SPI = ${values.ev} / ${values.spi} = ${result}`;
+        } else {
+          return null;
+        }
+        break;
+
+      case "ev":
+        if (values.pv && values.sv) {
+          result = roundToTwo(values.pv + values.sv);
+          formula = `EV = PV + SV = ${values.pv} + ${values.sv} = ${result}`;
+        } else if (values.ac && values.cv) {
+          result = roundToTwo(values.ac + values.cv);
+          formula = `EV = AC + CV = ${values.ac} + ${values.cv} = ${result}`;
+        } else if (values.pv && values.spi) {
+          result = roundToTwo(values.pv * values.spi);
+          formula = `EV = PV × SPI = ${values.pv} × ${values.spi} = ${result}`;
+        } else if (values.ac && values.cpi) {
+          result = roundToTwo(values.ac * values.cpi);
+          formula = `EV = AC × CPI = ${values.ac} × ${values.cpi} = ${result}`;
+        } else {
+          return null;
+        }
+        break;
+
+      case "ac":
+        if (values.ev && values.cv) {
+          result = roundToTwo(values.ev - values.cv);
+          formula = `AC = EV - CV = ${values.ev} - ${values.cv} = ${result}`;
+        } else if (values.ev && values.cpi) {
+          result = roundToTwo(values.ev / values.cpi);
+          formula = `AC = EV / CPI = ${values.ev} / ${values.cpi} = ${result}`;
+        } else {
+          return null;
+        }
+        break;
+
+      case "sv":
+        if (values.ev && values.pv) {
+          result = roundToTwo(values.ev - values.pv);
+          formula = `SV = EV - PV = ${values.ev} - ${values.pv} = ${result}`;
+        } else {
+          return null;
+        }
+        break;
+
+      case "cv":
+        if (values.ev && values.ac) {
+          result = roundToTwo(values.ev - values.ac);
+          formula = `CV = EV - AC = ${values.ev} - ${values.ac} = ${result}`;
+        } else {
+          return null;
+        }
+        break;
+
+      case "cpi":
+        if (values.ev && values.ac) {
+          result = roundToTwo(values.ev / values.ac);
+          formula = `CPI = EV / AC = ${values.ev} / ${values.ac} = ${result}`;
+        } else {
+          return null;
+        }
+        break;
+
+      case "spi":
+        if (values.ev && values.pv) {
+          result = roundToTwo(values.ev / values.pv);
+          formula = `SPI = EV / PV = ${values.ev} / ${values.pv} = ${result}`;
+        } else {
+          return null;
+        }
+        break;
+
+      case "etc":
+        if (values.bac && values.ev && values.cpi) {
+          result = roundToTwo((values.bac - values.ev) / values.cpi);
+          formula = `ETC = (BAC - EV) / CPI = (${values.bac} - ${values.ev}) / ${values.cpi} = ${result}`;
+        } else {
+          return null;
+        }
+        break;
+
+      case "eac":
+        if (values.ac && values.etc) {
+          result = roundToTwo(values.ac + values.etc);
+          formula = `EAC = AC + ETC = ${values.ac} + ${values.etc} = ${result}`;
+        } else if (values.bac && values.cpi) {
+          result = roundToTwo(values.bac / values.cpi);
+          formula = `EAC = BAC / CPI = ${values.bac} / ${values.cpi} = ${result}`;
+        } else {
+          return null;
+        }
+        break;
+
+      default:
+        return null;
+    }
+
+    return { result, formula };
+  };
+
+  const handleAlgebraicChange = (field: keyof Omit<AlgebraicState, 'calculatedValues'>, value: string) => {
+    setAlgebraicState(prev => {
+      const newState = {
+        ...prev,
+        [field]: value,
+        calculatedValues: { ...prev.calculatedValues }
+      } as AlgebraicState;
+
+      // If we're just changing which metric to solve for, don't clear any values
+      if (field === "solveFor") {
+        return newState;
+      }
+
+      const derivedMetrics = new Set([
+        "sv",  // Derived from EV and PV
+        "cv",  // Derived from EV and AC
+        "cpi", // Derived from EV and AC
+        "spi", // Derived from EV and PV
+        "etc", // Derived from BAC, EV, and CPI
+        "eac"  // Derived from AC and ETC or BAC and CPI
+      ]);
+
+      // Convert all non-empty strings to numbers and include calculated values
+      const values: Record<string, number> = {
+        ...newState.calculatedValues
+      };
+      
+      // Add user-input values
+      Object.entries(newState).forEach(([key, val]) => {
+        if (key !== "solveFor" && key !== "calculatedValues" && val !== "") {
+          values[key] = parseFloat(val as string);
+        }
+      });
+
+      // Only clear derived metrics that depend on the changed field
+      Object.keys(newState).forEach(metric => {
+        if (metric !== "solveFor" && 
+            metric !== "calculatedValues" && 
+            derivedMetrics.has(metric)) {  // Only clear derived metrics
+          const required = getRequiredFields(metric);
+          if (required.includes(field)) {
+            delete newState.calculatedValues[metric];
+            newState[metric as keyof Omit<AlgebraicState, 'calculatedValues'>] = "";
+          }
+        }
+      });
+
+      // Try to solve metrics in dependency order, but only for derived metrics
+      const solved = new Set<string>();
+      let madeProgress = true;
+
+      while (madeProgress) {
+        madeProgress = false;
+        Object.keys(newState).forEach(metric => {
+          if (metric !== "solveFor" && 
+              metric !== "calculatedValues" && 
+              metric !== field &&
+              derivedMetrics.has(metric) && // Only solve for derived metrics
+              !solved.has(metric) &&
+              newState[metric as keyof Omit<AlgebraicState, 'calculatedValues'>] === "") {
+            
+            const required = getRequiredFields(metric);
+            const hasAllRequired = required.every(req => 
+              values[req] !== undefined || solved.has(req)
+            );
+
+            if (hasAllRequired) {
+              const solution = solveMetric(metric, values);
+              if (solution) {
+                newState[metric as keyof Omit<AlgebraicState, 'calculatedValues'>] = solution.result.toString();
+                newState.calculatedValues[metric] = solution.result;
+                values[metric] = solution.result;
+                solved.add(metric);
+                madeProgress = true;
+              }
+            }
+          }
+        });
+      }
+
+      return newState;
+    });
+  };
+
+  const getRequiredFields = (metric: string): string[] => {
+    switch (metric) {
+      case "pv":
+        return ["ev", "sv"];
+      case "ev":
+        return ["pv", "sv"];
+      case "ac":
+        return ["ev", "cv"];
+      case "sv":
+        return ["ev", "pv"];
+      case "cv":
+        return ["ev", "ac"];
+      case "cpi":
+        return ["ev", "ac"];
+      case "spi":
+        return ["ev", "pv"];
+      case "etc":
+        return ["bac", "ev", "cpi"];
+      case "eac":
+        return ["ac", "etc"];
+      default:
+        return [];
+    }
+  };
+
+  const getAlternativeFields = (metric: string): string[] => {
+    switch (metric) {
+      case "pv":
+        return ["ev", "spi"];
+      case "ev":
+        return ["ac", "cv", "pv", "spi", "ac", "cpi"];
+      case "ac":
+        return ["ev", "cpi"];
+      case "eac":
+        return ["bac", "cpi"];
+      default:
+        return [];
+    }
+  };
+
+  const getFieldLabel = (field: string): string => {
+    const labels: Record<string, string> = {
+      pv: "Planned Value",
+      ev: "Earned Value",
+      ac: "Actual Cost",
+      sv: "Schedule Variance",
+      cv: "Cost Variance",
+      cpi: "Cost Performance Index",
+      spi: "Schedule Performance Index",
+      bac: "Budget at Completion",
+      etc: "Estimate to Complete",
+      eac: "Estimate at Completion"
+    };
+    return labels[field] || field;
+  };
+
+  const getSolution = (state: AlgebraicState) => {
+    if (state.solveFor === "none") return null;
+
+    const values: Record<string, number> = {
+      ...state.calculatedValues
+    };
+
+    Object.entries(state).forEach(([key, val]) => {
+      if (key !== "solveFor" && key !== "calculatedValues" && val !== "") {
+        values[key] = parseFloat(val);
+      }
+    });
+
+    const solution = solveMetric(state.solveFor, values);
+    if (solution) {
+      // Store the solved value in calculatedValues for future use
+      state.calculatedValues[state.solveFor] = solution.result;
+    }
+    return solution;
+  };
+
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-8">Project Iterations Analysis</h1>
@@ -254,6 +561,7 @@ export default function EarnedValueAnalysis() {
           <TabsTrigger value="iterations">Iterations</TabsTrigger>
           <TabsTrigger value="analysis">Analysis</TabsTrigger>
           <TabsTrigger value="calculations">Detailed Calculations</TabsTrigger>
+          <TabsTrigger value="algebraic">Algebraic Solver</TabsTrigger>
         </TabsList>
 
         <TabsContent value="iterations">
@@ -592,6 +900,128 @@ export default function EarnedValueAnalysis() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="algebraic">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Algebraic Solver</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Solve For</Label>
+                    <Select
+                      value={algebraicState.solveFor}
+                      onValueChange={(value) => handleAlgebraicChange("solveFor", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select metric to solve for" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="pv">Planned Value (PV)</SelectItem>
+                        <SelectItem value="ev">Earned Value (EV)</SelectItem>
+                        <SelectItem value="ac">Actual Cost (AC)</SelectItem>
+                        <SelectItem value="sv">Schedule Variance (SV)</SelectItem>
+                        <SelectItem value="cv">Cost Variance (CV)</SelectItem>
+                        <SelectItem value="cpi">Cost Performance Index (CPI)</SelectItem>
+                        <SelectItem value="spi">Schedule Performance Index (SPI)</SelectItem>
+                        <SelectItem value="etc">Estimate to Complete (ETC)</SelectItem>
+                        <SelectItem value="eac">Estimate at Completion (EAC)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {algebraicState.solveFor !== "none" && (
+                      <div className="text-sm text-gray-500">
+                        <p className="font-medium">Required values:</p>
+                        <ul className="list-disc list-inside">
+                          {getRequiredFields(algebraicState.solveFor).map(field => (
+                            <li key={field}>{getFieldLabel(field)} ({field.toUpperCase()})</li>
+                          ))}
+                        </ul>
+                        {getAlternativeFields(algebraicState.solveFor).length > 0 && (
+                          <>
+                            <p className="font-medium mt-2">Alternative combinations:</p>
+                            <ul className="list-disc list-inside">
+                              {getAlternativeFields(algebraicState.solveFor).map(field => (
+                                <li key={field}>{getFieldLabel(field)} ({field.toUpperCase()})</li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {Object.entries(algebraicState).map(([key, value]) => {
+                      // Skip internal state fields
+                      if (key === "solveFor" || key === "calculatedValues") return null;
+
+                      const isRequired = getRequiredFields(algebraicState.solveFor).includes(key);
+                      const isDisabled = algebraicState.solveFor === key;
+                      
+                      return (
+                        <div key={key} className="space-y-2">
+                          <Label className="flex items-center gap-2">
+                            {getFieldLabel(key)} ({key.toUpperCase()})
+                            {isRequired && !isDisabled && (
+                              <span className="text-red-500">*</span>
+                            )}
+                          </Label>
+                          <Input
+                            type="number"
+                            value={value}
+                            onChange={(e) => handleAlgebraicChange(key as keyof Omit<AlgebraicState, 'calculatedValues'>, e.target.value)}
+                            placeholder={`Enter ${key.toUpperCase()}`}
+                            disabled={isDisabled}
+                            className={isRequired && !isDisabled ? "border-red-200" : ""}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Solution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const solution = getSolution(algebraicState);
+                  if (solution) {
+                    // Store the solved value in the input field
+                    if (algebraicState.solveFor !== "none") {
+                      const field = algebraicState.solveFor as keyof Omit<AlgebraicState, 'calculatedValues'>;
+                      // Use setTimeout to avoid state update during render
+                      setTimeout(() => {
+                        handleAlgebraicChange(field, solution.result.toString());
+                      }, 0);
+                    }
+                    return (
+                      <div className="space-y-4">
+                        <div className="font-mono text-sm">
+                          <pre>{solution.formula}</pre>
+                        </div>
+                        <div className="text-2xl font-bold">
+                          {algebraicState.solveFor.toUpperCase()} = ${solution.result.toLocaleString()}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="text-gray-500">
+                      Select a metric to solve for and enter the known values
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
